@@ -988,14 +988,8 @@ async function initApp(){
     document.getElementById('registro').classList.remove('hidden');
   }
 
-  // Handle auth state changes (after OTP verify, token refresh, sign out)
-  sb.auth.onAuthStateChange(async (event, session)=>{
-    if(event==='SIGNED_IN' && session){
-      sbUser = session.user;
-      await Promise.all([loadProfile(), loadMyPreds()]);
-      mostrarApp();
-      initRealtime();
-    }
+  // Only handle sign-out here; sign-in is handled explicitly in initApp() and the OTP handler
+  sb.auth.onAuthStateChange(async (event)=>{
     if(event==='SIGNED_OUT'){
       sbUser = null; sbProfile = null; myPreds = {};
       document.getElementById('user-pill').style.display='none';
@@ -1040,14 +1034,23 @@ document.getElementById('otp-btn').onclick = async ()=>{
   document.getElementById('otp-btn').disabled=false;
   document.getElementById('otp-btn').textContent='✅ VERIFICAR CÓDIGO';
   if(error){toast('Código incorrecto o expirado','err');return}
-  // Upsert profile
-  await sb.from('profiles').upsert({
-    id: data.user.id,
+
+  sbUser = data.user;
+
+  // Upsert profile BEFORE loading anything else
+  const {error:upsertErr} = await sb.from('profiles').upsert({
+    id: sbUser.id,
     nombre: _regNombre,
     email: _regEmail,
     tel: _regTel
   },{onConflict:'id'});
-  // onAuthStateChange → SIGNED_IN will call mostrarApp()
+  if(upsertErr){toast('Error guardando perfil: '+upsertErr.message,'err');return}
+
+  // Now load profile (to get role) + matches + preds, then show app
+  await Promise.all([loadProfile(), loadMatches()]);
+  await loadMyPreds();
+  mostrarApp();
+  initRealtime();
 };
 
 function volverRegistro(){
