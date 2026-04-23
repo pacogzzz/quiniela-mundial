@@ -443,42 +443,170 @@ td.pts{color:var(--dorado);font-weight:900}
   #nav{top:58px}
   .admin-match-row{grid-template-columns:1fr 1fr;font-size:.7rem}
 }
+
+/* ========= SPLASH WELCOME + CHILENA ========= */
+#splash{
+  position:fixed;inset:0;z-index:2000;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(26,107,46,.35) 0%, transparent 60%),
+    radial-gradient(circle at 50% 50%, #0a2a14 0%, #03090a 100%);
+  overflow:hidden;
+  display:block;
+}
+#splash.done{animation:splashOut .5s ease forwards}
+@keyframes splashOut{to{opacity:0;visibility:hidden;pointer-events:none}}
+
+.sp-msg{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  text-align:center;font-weight:900;letter-spacing:2px;
+  text-shadow:3px 3px 0 #000, 0 0 30px rgba(255,215,0,.45);
+  padding:0 1rem;max-width:92%;line-height:1.1;
+  opacity:0;pointer-events:none;
+}
+.sp-msg.m1{font-size:clamp(2rem,7.5vw,5.2rem);color:var(--dorado);animation:spFade 2.4s ease forwards}
+.sp-msg.m2{font-size:clamp(1.3rem,4vw,2.6rem);color:#fff;animation:spFade 2.4s 2.4s ease forwards}
+.sp-msg.m3{font-size:clamp(1.6rem,5.2vw,3.6rem);color:var(--dorado);animation:spFade 2.4s 4.8s ease forwards}
+@keyframes spFade{
+  0%  {opacity:0;transform:translate(-50%,-30%) scale(.6)}
+  15% {opacity:1;transform:translate(-50%,-50%) scale(1)}
+  80% {opacity:1;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-70%) scale(1.1)}
+}
+
+.sp-scene{
+  position:absolute;inset:0;opacity:0;
+  animation:spSceneIn .4s 7.2s ease forwards;
+}
+@keyframes spSceneIn{to{opacity:1}}
+.sp-ground{
+  position:absolute;bottom:0;left:0;right:0;height:28%;
+  background:
+    repeating-linear-gradient(90deg, var(--verde) 0 80px, var(--verde-claro) 80px 160px);
+  border-top:5px solid #fff;
+  box-shadow:0 -10px 40px rgba(0,0,0,.5);
+}
+.sp-player{
+  position:absolute;bottom:22%;left:15%;
+  font-size:clamp(4rem,13vw,10rem);
+  transform-origin:center;
+  filter:drop-shadow(0 6px 8px rgba(0,0,0,.6));
+  animation:chilena 1.6s 7.3s cubic-bezier(.4,.1,.3,1) forwards;
+}
+@keyframes chilena{
+  0%  {bottom:22%;left:15%;transform:rotate(0deg)}
+  20% {bottom:28%;left:22%;transform:rotate(-30deg)}
+  45% {bottom:55%;left:38%;transform:rotate(-180deg)}
+  70% {bottom:52%;left:52%;transform:rotate(-340deg)}
+  100%{bottom:24%;left:62%;transform:rotate(-360deg)}
+}
+.sp-ball{
+  position:absolute;bottom:32%;left:26%;
+  font-size:clamp(2.5rem,7.5vw,5.2rem);
+  filter:drop-shadow(0 4px 6px rgba(0,0,0,.6));
+  animation:ballArc 1.7s 7.4s ease-out forwards;
+}
+@keyframes ballArc{
+  0%  {bottom:32%;left:26%;transform:rotate(0) scale(1)}
+  35% {bottom:62%;left:44%;transform:rotate(360deg) scale(1.1)}
+  65% {bottom:72%;left:72%;transform:rotate(720deg) scale(1.2)}
+  100%{bottom:58%;left:98%;transform:rotate(1080deg) scale(1.3);opacity:.9}
+}
+.sp-gool{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%) scale(0);
+  font-size:clamp(4rem,15vw,11rem);
+  font-weight:900;color:var(--dorado);
+  text-shadow:5px 5px 0 #000, 0 0 50px #ff3, 0 0 80px rgba(255,51,51,.6);
+  letter-spacing:4px;opacity:0;
+  animation:goolPop 2.4s 8.6s ease forwards;
+}
+@keyframes goolPop{
+  0%  {transform:translate(-50%,-50%) scale(0) rotate(-25deg);opacity:0}
+  15% {transform:translate(-50%,-50%) scale(1.35) rotate(6deg);opacity:1}
+  30% {transform:translate(-50%,-50%) scale(.95) rotate(-4deg);opacity:1}
+  45% {transform:translate(-50%,-50%) scale(1.15) rotate(3deg);opacity:1}
+  60% {transform:translate(-50%,-50%) scale(1) rotate(0);opacity:1}
+  80% {transform:translate(-50%,-50%) scale(1) rotate(0);opacity:1}
+  100%{transform:translate(-50%,-50%) scale(1.6) rotate(8deg);opacity:0}
+}
+.sp-skip{
+  position:absolute;bottom:1rem;right:1rem;z-index:10;
+  font-size:.8rem;color:#fff;
+  background:rgba(0,0,0,.5);padding:.45rem .9rem;border-radius:20px;
+  border:1px solid rgba(255,215,0,.4);cursor:pointer;
+  font-family:inherit;letter-spacing:1px;
+}
+.sp-skip:hover{background:rgba(0,0,0,.8);border-color:var(--dorado)}
+
+/* ========= AUTH TABS ========= */
+.auth-tabs{
+  display:flex;gap:.4rem;margin:1rem 0 .6rem;
+  border-bottom:1px solid #234;padding-bottom:.2rem;
+}
+.auth-tab{
+  flex:1;padding:.6rem;font-weight:700;letter-spacing:1px;
+  color:#888;border-bottom:3px solid transparent;font-size:.8rem;
+  transition:all .2s;
+}
+.auth-tab:hover{color:#ccc}
+.auth-tab.active{color:var(--dorado);border-bottom-color:var(--dorado)}
 </style>
 </head>
 <body>
 
+<!-- ========== SPLASH WELCOME + CHILENA ========== -->
+<div id="splash">
+  <div class="sp-msg m1">EL MUNDIAL SE VIVE EN LA CORTE</div>
+  <div class="sp-msg m2">Bienvenido a tu Quiniela,<br>donde tu mesa también juega el mundial</div>
+  <div class="sp-msg m3">La Corte,<br>cancha oficial de la afición</div>
+  <div class="sp-scene">
+    <div class="sp-ground"></div>
+    <div class="sp-player">🤸</div>
+    <div class="sp-ball">🍔</div>
+    <div class="sp-gool">GOOL!!</div>
+  </div>
+  <button class="sp-skip" id="sp-skip">Saltar ▶</button>
+</div>
+
 <!-- ========== REGISTRO ========== -->
-<div id="registro">
+<div id="registro" class="hidden">
   <div class="reg-card">
-    <!-- Step 1: form -->
-    <div id="reg-form-step">
-      <div style="text-align:center;font-size:3rem">⚽🏆</div>
-      <h1 style="text-align:center">VIVE EL MUNDIAL<br><span style="color:#fff;font-size:1rem">EN</span> <span style="color:#fff">LA CORTE</span></h1>
-      <p class="lead">Registrate para participar en la quiniela oficial</p>
+    <div style="text-align:center;font-size:3rem">⚽🏆</div>
+    <h1 style="text-align:center">VIVE EL MUNDIAL<br><span style="color:#fff;font-size:1rem">EN</span> <span style="color:#fff">LA CORTE</span></h1>
+    <p class="lead">Regístrate o inicia sesión para jugar</p>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-auth="signup">CREAR CUENTA</button>
+      <button class="auth-tab" data-auth="signin">INICIAR SESIÓN</button>
+    </div>
+
+    <!-- Sign up -->
+    <div id="signup-fields">
       <label>NOMBRE COMPLETO</label>
       <input type="text" id="reg-nombre" placeholder="Juan Pérez" />
+      <label>NOMBRE DE USUARIO</label>
+      <input type="text" id="reg-username" placeholder="juanperez" autocomplete="username" />
       <label>CORREO ELECTRÓNICO</label>
-      <input type="email" id="reg-email" placeholder="juan@correo.com" />
+      <input type="email" id="reg-email" placeholder="juan@correo.com" autocomplete="email" />
       <label>TELÉFONO</label>
       <input type="tel" id="reg-tel" placeholder="834 123 4567" />
-      <button class="btn-primary" id="reg-btn">⚽ ENTRAR A LA QUINIELA</button>
+      <label>CONTRASEÑA</label>
+      <input type="password" id="reg-password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
+      <label>CONFIRMAR CONTRASEÑA</label>
+      <input type="password" id="reg-password2" placeholder="Repite tu contraseña" autocomplete="new-password" />
+      <button class="btn-primary" id="reg-btn">⚽ CREAR CUENTA</button>
       <p style="text-align:center;font-size:.7rem;opacity:.6;margin-top:1rem">
         Al registrarte aceptas participar en la quiniela Mundial 2026 de La Corte
       </p>
     </div>
-    <!-- Step 2: OTP verification -->
-    <div id="reg-otp-step" style="display:none">
-      <div style="text-align:center;font-size:3rem">📧</div>
-      <h1 style="text-align:center">REVISA TU CORREO</h1>
-      <p class="lead">Enviamos un código de 6 dígitos a<br><strong id="otp-email-shown" style="color:var(--dorado)"></strong></p>
-      <label>CÓDIGO DE VERIFICACIÓN</label>
-      <input type="text" id="reg-otp" placeholder="123456" maxlength="6" inputmode="numeric"
-             style="letter-spacing:6px;font-size:1.4rem;text-align:center"/>
-      <button class="btn-primary" id="otp-btn">✅ VERIFICAR CÓDIGO</button>
-      <button onclick="volverRegistro()"
-        style="width:100%;margin-top:.6rem;opacity:.65;font-size:.85rem;padding:.5rem;border-radius:6px;background:transparent;border:1px solid #333">
-        ← Cambiar correo
-      </button>
+
+    <!-- Sign in -->
+    <div id="signin-fields" style="display:none">
+      <label>USUARIO O CORREO</label>
+      <input type="text" id="si-user" placeholder="juanperez o juan@correo.com" autocomplete="username" />
+      <label>CONTRASEÑA</label>
+      <input type="password" id="si-password" placeholder="••••••" autocomplete="current-password" />
+      <button class="btn-primary" id="si-btn">⚽ INICIAR SESIÓN</button>
     </div>
   </div>
 </div>
@@ -971,6 +1099,7 @@ function initRealtime(){
    AUTH & INIT
    ===================================================== */
 async function initApp(){
+  runSplash();
   // Config check
   if(SUPABASE_URL.includes('YOUR_PROJECT')){
     document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:monospace;color:#FFD700;background:#08120c;text-align:center;padding:2rem"><div><h2>⚙️ Configuración pendiente</h2><p style="margin-top:1rem;opacity:.8">Abre <code>index.html</code> y reemplaza<br><code>SUPABASE_URL</code> y <code>SUPABASE_ANON_KEY</code><br>con los valores de tu proyecto Supabase.<br><br>Ver <code>README.md</code> para instrucciones.</p></div></div>';
@@ -995,69 +1124,109 @@ async function initApp(){
       document.getElementById('user-pill').style.display='none';
       document.getElementById('tab-admin').style.display='none';
       document.getElementById('registro').classList.remove('hidden');
-      volverRegistro();
     }
   });
 }
 
 /* =====================================================
-   REGISTRO / OTP
+   SPLASH
    ===================================================== */
-let _regNombre='', _regEmail='', _regTel='';
+function runSplash(){
+  const s = document.getElementById('splash');
+  if(!s) return;
+  let dismissed = false;
+  const dismiss = ()=>{
+    if(dismissed) return; dismissed = true;
+    s.classList.add('done');
+    setTimeout(()=>s.remove(), 600);
+  };
+  document.getElementById('sp-skip').onclick = dismiss;
+  setTimeout(dismiss, 11000);
+}
 
-document.getElementById('reg-btn').onclick = async ()=>{
-  const n = document.getElementById('reg-nombre').value.trim();
-  const e = document.getElementById('reg-email').value.trim().toLowerCase();
-  const t = document.getElementById('reg-tel').value.trim();
-  if(!n||!e||!t){toast('Completa todos los campos','err');return}
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)){toast('Correo inválido','err');return}
-  _regNombre=n; _regEmail=e; _regTel=t;
-  document.getElementById('reg-btn').disabled=true;
-  document.getElementById('reg-btn').textContent='Enviando...';
-  const {error} = await sb.auth.signInWithOtp({email:e, options:{shouldCreateUser:true}});
-  document.getElementById('reg-btn').disabled=false;
-  document.getElementById('reg-btn').textContent='⚽ ENTRAR A LA QUINIELA';
-  if(error){toast(error.message,'err');return}
-  document.getElementById('otp-email-shown').textContent = e;
-  document.getElementById('reg-form-step').style.display='none';
-  document.getElementById('reg-otp-step').style.display='block';
-  document.getElementById('reg-otp').focus();
-  toast('Código enviado — revisa tu correo');
-};
+/* =====================================================
+   REGISTRO (usuario + contraseña)
+   ===================================================== */
+document.querySelectorAll('.auth-tab').forEach(b=>{
+  b.onclick = ()=>{
+    document.querySelectorAll('.auth-tab').forEach(t=>t.classList.remove('active'));
+    b.classList.add('active');
+    const mode = b.dataset.auth;
+    document.getElementById('signup-fields').style.display = mode==='signup'?'block':'none';
+    document.getElementById('signin-fields').style.display = mode==='signin'?'block':'none';
+  };
+});
 
-document.getElementById('otp-btn').onclick = async ()=>{
-  const token = document.getElementById('reg-otp').value.trim();
-  if(token.length!==6){toast('El código tiene 6 dígitos','err');return}
-  document.getElementById('otp-btn').disabled=true;
-  document.getElementById('otp-btn').textContent='Verificando...';
-  const {data,error} = await sb.auth.verifyOtp({email:_regEmail, token, type:'email'});
-  document.getElementById('otp-btn').disabled=false;
-  document.getElementById('otp-btn').textContent='✅ VERIFICAR CÓDIGO';
-  if(error){toast('Código incorrecto o expirado','err');return}
-
-  sbUser = data.user;
-
-  // Upsert profile BEFORE loading anything else
-  const {error:upsertErr} = await sb.from('profiles').upsert({
-    id: sbUser.id,
-    nombre: _regNombre,
-    email: _regEmail,
-    tel: _regTel
-  },{onConflict:'id'});
-  if(upsertErr){toast('Error guardando perfil: '+upsertErr.message,'err');return}
-
-  // Now load profile (to get role) + matches + preds, then show app
+async function finishSignIn(){
   await Promise.all([loadProfile(), loadMatches()]);
   await loadMyPreds();
   mostrarApp();
   initRealtime();
+}
+
+document.getElementById('reg-btn').onclick = async ()=>{
+  const nombre   = document.getElementById('reg-nombre').value.trim();
+  const username = document.getElementById('reg-username').value.trim().toLowerCase();
+  const email    = document.getElementById('reg-email').value.trim().toLowerCase();
+  const tel      = document.getElementById('reg-tel').value.trim();
+  const pw       = document.getElementById('reg-password').value;
+  const pw2      = document.getElementById('reg-password2').value;
+  if(!nombre||!username||!email||!tel||!pw){toast('Completa todos los campos','err');return}
+  if(!/^[a-z0-9_]{3,20}$/.test(username)){toast('Usuario: 3-20 caracteres (a-z, 0-9, _)','err');return}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast('Correo inválido','err');return}
+  if(pw.length<6){toast('La contraseña debe tener al menos 6 caracteres','err');return}
+  if(pw!==pw2){toast('Las contraseñas no coinciden','err');return}
+
+  const btn = document.getElementById('reg-btn');
+  btn.disabled=true; btn.textContent='Verificando usuario...';
+
+  const {data:taken, error:lookupErr} = await sb.rpc('username_taken',{p_username:username});
+  if(lookupErr){btn.disabled=false;btn.textContent='⚽ CREAR CUENTA';toast('Error: '+lookupErr.message,'err');return}
+  if(taken){btn.disabled=false;btn.textContent='⚽ CREAR CUENTA';toast('Ese nombre de usuario ya está tomado','err');return}
+
+  btn.textContent='Creando cuenta...';
+  const {data,error} = await sb.auth.signUp({
+    email, password:pw,
+    options:{ data:{ nombre, username, tel } }
+  });
+  btn.disabled=false; btn.textContent='⚽ CREAR CUENTA';
+  if(error){toast(error.message,'err');return}
+
+  if(!data.session){
+    toast('Cuenta creada. Revisa tu correo para confirmar antes de iniciar sesión.','ok');
+    return;
+  }
+
+  sbUser = data.user;
+  const {error:upsertErr} = await sb.from('profiles').upsert({
+    id: sbUser.id, nombre, username, email, tel
+  },{onConflict:'id'});
+  if(upsertErr){toast('Error guardando perfil: '+upsertErr.message,'err');return}
+  await finishSignIn();
 };
 
-function volverRegistro(){
-  document.getElementById('reg-otp-step').style.display='none';
-  document.getElementById('reg-form-step').style.display='block';
-  document.getElementById('reg-otp').value='';
-}
+document.getElementById('si-btn').onclick = async ()=>{
+  const id = document.getElementById('si-user').value.trim().toLowerCase();
+  const pw = document.getElementById('si-password').value;
+  if(!id||!pw){toast('Completa todos los campos','err');return}
+
+  const btn = document.getElementById('si-btn');
+  btn.disabled=true; btn.textContent='Entrando...';
+
+  let email = id;
+  if(!id.includes('@')){
+    const {data:found, error:rpcErr} = await sb.rpc('email_for_username',{p_username:id});
+    if(rpcErr){btn.disabled=false;btn.textContent='⚽ INICIAR SESIÓN';toast('Error: '+rpcErr.message,'err');return}
+    if(!found){btn.disabled=false;btn.textContent='⚽ INICIAR SESIÓN';toast('Usuario no encontrado','err');return}
+    email = found;
+  }
+
+  const {data,error} = await sb.auth.signInWithPassword({email, password:pw});
+  btn.disabled=false; btn.textContent='⚽ INICIAR SESIÓN';
+  if(error){toast('Credenciales inválidas','err');return}
+  sbUser = data.user;
+  await finishSignIn();
+};
 
 function mostrarApp(){
   document.getElementById('registro').classList.add('hidden');
