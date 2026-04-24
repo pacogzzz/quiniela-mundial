@@ -770,7 +770,20 @@ td.pts{color:var(--dorado);font-weight:900}
           <button class="btn-ok" onclick="crearCodigo()">Generar</button>
           <button class="btn-ok" onclick="crearCodigoAleatorio()">Aleatorio</button>
         </div>
-        <div id="codes-list" style="font-size:.8rem;max-height:200px;overflow-y:auto"></div>
+        <div style="margin:.6rem 0;padding:.6rem;background:rgba(255,215,0,.08);border:1px dashed var(--dorado);border-radius:6px">
+          <p style="font-size:.75rem;opacity:.9;margin-bottom:.4rem">
+            <b>Folios automáticos del Mundial:</b> genera <b>1 folio de VISITA por cada día de partido</b> (formato VIS-AAAAMMDD-XXXX) y <b>1 folio de CONSUMO por cada partido</b> (formato CON-{matchId}-XXXX). Estos folios solo los ves tú como admin.
+          </p>
+          <button class="btn-ok" onclick="generarFoliosMundial()">⚡ GENERAR FOLIOS MUNDIAL</button>
+          <button onclick="exportarFoliosCSV()" style="background:#111;color:var(--dorado);border:1px solid var(--dorado);padding:.4rem .8rem;border-radius:6px;margin-left:.4rem">📥 EXPORTAR CSV</button>
+        </div>
+        <div id="codes-list" style="font-size:.8rem;max-height:260px;overflow-y:auto"></div>
+      </div>
+      <div class="admin-section">
+        <h3>👥 USUARIOS REGISTRADOS</h3>
+        <p style="font-size:.75rem;opacity:.7">Lista completa de participantes (incluye usuarios sin predicciones).</p>
+        <button onclick="exportarUsuariosCSV()" style="background:#111;color:var(--dorado);border:1px solid var(--dorado);padding:.4rem .8rem;border-radius:6px;margin:.3rem 0">📥 EXPORTAR CSV</button>
+        <div id="users-list" style="font-size:.8rem;max-height:260px;overflow-y:auto;margin-top:.4rem"></div>
       </div>
       <div class="admin-section">
         <h3>🏳️ CLASIFICADOS A ELIMINATORIA</h3>
@@ -794,10 +807,11 @@ td.pts{color:var(--dorado);font-weight:900}
     <div style="font-size:3rem">📞</div>
     <h2>¡RESERVA TU MESA!</h2>
     <p id="modal-match" style="margin:.5rem 0;font-weight:700"></p>
-    <p style="font-size:.85rem;opacity:.8">Vive este partido con la mejor ambiente en La Corte. Llama ahora para reservar:</p>
-    <a href="tel:8343144848" class="phone-big">834 314 4848</a>
-    <a href="tel:8343144848" class="btn-primary" style="display:block;text-decoration:none;margin-bottom:.6rem">📞 LLAMAR AHORA</a>
-    <a id="wa-link" href="#" target="_blank" class="btn-primary btn-gold" style="display:block;text-decoration:none">💬 WHATSAPP</a>
+    <p style="font-size:.85rem;opacity:.8">Estás a punto de vivir la experiencia del Mundial en el mejor lugar. Llama para apartar tu mesa y después confirma por WhatsApp:</p>
+    <a href="tel:8342463025" class="phone-big">834 246 3025</a>
+    <a href="tel:8342463025" class="btn-primary" style="display:block;text-decoration:none;margin-bottom:.6rem">📞 LLAMAR AHORA</a>
+    <a id="wa-link" href="#" target="_blank" class="btn-primary btn-gold" style="display:block;text-decoration:none">💬 CONFIRMAR POR WHATSAPP</a>
+    <p style="font-size:.7rem;opacity:.6;margin-top:.6rem">Después de colgar, toca "Confirmar por WhatsApp" para enviarnos los datos de tu reserva.</p>
   </div>
 </div>
 
@@ -1324,27 +1338,40 @@ function renderGrupos(){
 function renderBracket(){
   const rounds = [
     {key:'R32',title:'DIECISEISAVOS'},
-    {key:'R16',title:'OCTAVOS DE FINAL'},
-    {key:'QF',title:'CUARTOS DE FINAL'},
+    {key:'R16',title:'OCTAVOS'},
+    {key:'QF',title:'CUARTOS'},
     {key:'SF',title:'SEMIFINALES'},
+    {key:'3RD',title:'3ER LUGAR'},
     {key:'FINAL',title:'FINAL'},
-    {key:'3RD',title:'TERCER LUGAR'},
   ];
   const br = document.getElementById('bracket');
+  if(!br) return;
   br.innerHTML = '';
   rounds.forEach(r=>{
+    const matches = allMatches.filter(m=>m.round===r.key)
+      .sort((a,b)=>new Date(a.date)-new Date(b.date));
     const col = document.createElement('div');
     col.className='bracket-round';
-    col.innerHTML = `<h3>${r.title}</h3>`;
-    allMatches.filter(m=>m.round===r.key).forEach(m=>{
-      const tA = m.teamA==='TBD'?'TBD':(TEAMS[m.teamA]?TEAMS[m.teamA].flag+' '+TEAMS[m.teamA].name:m.teamA);
-      const tB = m.teamB==='TBD'?'TBD':(TEAMS[m.teamB]?TEAMS[m.teamB].flag+' '+TEAMS[m.teamB].name:m.teamB);
+    col.innerHTML = `<h3>${r.title}<br><span style="font-size:.65rem;opacity:.6;font-weight:400">${matches.length} partido${matches.length===1?'':'s'}</span></h3>`;
+    if(!matches.length){
+      col.innerHTML += `<div class="match-box" style="opacity:.5;text-align:center;padding:1rem">Sin datos</div>`;
+    }
+    matches.forEach(m=>{
+      const tA = m.teamA==='TBD'?'<em style="opacity:.5">Por definir</em>':(TEAMS[m.teamA]?TEAMS[m.teamA].flag+' '+TEAMS[m.teamA].name:m.teamA);
+      const tB = m.teamB==='TBD'?'<em style="opacity:.5">Por definir</em>':(TEAMS[m.teamB]?TEAMS[m.teamB].flag+' '+TEAMS[m.teamB].name:m.teamB);
       const wA = m.result && m.result.scoreA>m.result.scoreB;
       const wB = m.result && m.result.scoreB>m.result.scoreA;
+      const d = new Date(m.date);
+      const fecha = d.toLocaleDateString('es-MX',{day:'2-digit',month:'short'}).toUpperCase();
+      const hora = d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
       col.innerHTML += `
         <div class="match-box">
-          <div class="team-row ${wA?'winner':''}"><span>${tA}</span><span>${m.result?m.result.scoreA:'-'}</span></div>
-          <div class="team-row ${wB?'winner':''}"><span>${tB}</span><span>${m.result?m.result.scoreB:'-'}</span></div>
+          <div style="font-size:.65rem;opacity:.7;letter-spacing:1px;margin-bottom:.3rem;color:var(--dorado)">
+            ${m.id} · ${fecha} · ${hora}
+          </div>
+          <div class="team-row ${wA?'winner':''}"><span>${tA}</span><span>${m.result?m.result.scoreA:'—'}</span></div>
+          <div class="team-row ${wB?'winner':''}"><span>${tB}</span><span>${m.result?m.result.scoreB:'—'}</span></div>
+          <div style="font-size:.6rem;opacity:.55;margin-top:.3rem">📍 ${m.venue||''}</div>
         </div>`;
     });
     br.appendChild(col);
@@ -1403,7 +1430,7 @@ function renderCalendario(){
           📍 ${m.venue}
         </div>
       </div>
-      <button class="btn-reserve" onclick='abrirReserva(${JSON.stringify({id:m.id,label:m.label,tA:teamLabel(m.teamA).replace(/<[^>]+>/g,''),tB:teamLabel(m.teamB).replace(/<[^>]+>/g,''),date:formatDate(m.date)+' '+formatTime(m.date)})})'>
+      <button class="btn-reserve" onclick='abrirReserva(${JSON.stringify({id:m.id,label:m.label,tA:teamLabel(m.teamA).replace(/<[^>]+>/g,''),tB:teamLabel(m.teamB).replace(/<[^>]+>/g,''),date:formatDate(m.date)+' '+formatTime(m.date),venue:m.venue})})'>
           📞 RESERVAR
         </button>
     `;
@@ -1413,9 +1440,19 @@ function renderCalendario(){
 }
 
 function abrirReserva(m){
-  document.getElementById('modal-match').innerHTML = `${m.tA} <span style="opacity:.5">vs</span> ${m.tB}<br><small style="opacity:.7">${m.label} · ${m.date}</small>`;
-  const msg = encodeURIComponent(`Hola La Corte! Quiero reservar mesa para el partido ${m.tA} vs ${m.tB} (${m.date}).`);
-  document.getElementById('wa-link').href = 'https://wa.me/528343144848?text='+msg;
+  document.getElementById('modal-match').innerHTML = `${m.tA} <span style="opacity:.5">vs</span> ${m.tB}<br><small style="opacity:.7">${m.label} · ${m.date}</small><br><small style="opacity:.7">📍 ${m.venue||''}</small>`;
+  const userName = sbProfile?.nombre || '';
+  const msg = encodeURIComponent(
+`¡Hola La Corte! ⚽🏆
+Quiero confirmar mi reservación para:
+
+🏟️ Partido: ${m.tA} vs ${m.tB}
+📅 ${m.date}
+📍 ${m.venue||''}
+${userName?`👤 A nombre de: ${userName}\n`:''}
+Estoy a punto de vivir la experiencia del Mundial 2026 en el mejor lugar de la afición. ¡Prepárenme la mesa y que ruede el balón! 🔥`
+  );
+  document.getElementById('wa-link').href = 'https://wa.me/528342463025?text='+msg;
   document.getElementById('modal-reserva').classList.remove('hidden');
 }
 function cerrarModal(){document.getElementById('modal-reserva').classList.add('hidden')}
@@ -1557,6 +1594,13 @@ function elegir(mid, field, val, btn){
   btn.classList.add('selected');
 }
 async function guardarPrediccion(mid){
+  const m = allMatches.find(x=>x.id===mid);
+  if(!m){toast('Partido no encontrado','err');return;}
+  if(!puedeJugar(m)){
+    toast('🔒 Este partido ya empezó — no se puede editar','err');
+    renderQuiniela();
+    return;
+  }
   const sA = document.getElementById('sA-'+mid).value;
   const sB = document.getElementById('sB-'+mid).value;
   myPreds[mid] = myPreds[mid]||{};
@@ -1571,7 +1615,14 @@ async function guardarPrediccion(mid){
     ganador: pred.ganador||null,
     primero: pred.primero||null
   },{onConflict:'user_id,match_id'});
-  if(error){toast('Error al guardar','err');return;}
+  if(error){
+    if(String(error.message).toLowerCase().includes('lock')||String(error.message).includes('ya empez')){
+      toast('🔒 Este partido ya empezó — no se puede editar','err');
+    } else {
+      toast('Error al guardar: '+error.message,'err');
+    }
+    return;
+  }
   toast('✅ Predicción guardada');
   // recalc points display
   const pts = calcularMisPuntos();
@@ -1671,6 +1722,105 @@ async function renderAdmin(){
     cont.appendChild(row);
   });
   await renderCodigos();
+  await renderUsuarios();
+}
+
+/* ==========  FOLIOS AUTOMÁTICOS MUNDIAL  ========== */
+function _randSuffix(n=4){
+  const s='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let r=''; for(let i=0;i<n;i++) r+=s[Math.floor(Math.random()*s.length)];
+  return r;
+}
+async function generarFoliosMundial(){
+  if(sbProfile?.role!=='admin'){toast('Solo admin','err');return}
+  if(!allMatches.length){toast('Carga los partidos primero','err');return}
+  if(!confirm('Se generará 1 folio VISITA por cada día de partido y 1 folio CONSUMO por cada partido. ¿Continuar?')) return;
+
+  const dias = new Set();
+  allMatches.forEach(m=>{
+    const d = new Date(m.date);
+    const k = d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+    dias.add(k);
+  });
+
+  const rows = [];
+  dias.forEach(k=> rows.push({code:`VIS-${k}-${_randSuffix()}`, tipo:'visita'}));
+  allMatches.forEach(m=> rows.push({code:`CON-${m.id}-${_randSuffix()}`, tipo:'consumo'}));
+
+  // Insert en lotes para evitar conflictos (ignoramos duplicados)
+  let ok=0, dup=0, err=0;
+  for(const r of rows){
+    const {error} = await sb.from('codigos').insert(r);
+    if(!error) ok++;
+    else if(String(error.message).includes('duplicate')||error.code==='23505') dup++;
+    else err++;
+  }
+  toast(`✅ Folios generados: ${ok} nuevos · ${dup} ya existían · ${err} con error`);
+  await renderCodigos();
+}
+
+async function exportarFoliosCSV(){
+  if(sbProfile?.role!=='admin'){toast('Solo admin','err');return}
+  const {data,error} = await sb.from('codigos').select('code,tipo,usado,created_at,profiles(nombre,email)').order('created_at');
+  if(error){toast(error.message,'err');return}
+  const header = ['codigo','tipo','estado','canjeado_por_nombre','canjeado_por_email','creado'];
+  const lines = [header.join(',')];
+  (data||[]).forEach(c=>{
+    lines.push([
+      c.code, c.tipo, c.usado?'usado':'disponible',
+      (c.profiles?.nombre||'').replace(/,/g,' '),
+      (c.profiles?.email||'').replace(/,/g,' '),
+      c.created_at
+    ].join(','));
+  });
+  _downloadCSV('folios-la-corte.csv', lines.join('\n'));
+}
+
+/* ========== USUARIOS REGISTRADOS ========== */
+async function renderUsuarios(){
+  const list = document.getElementById('users-list');
+  if(!list) return;
+  const {data,error} = await sb.from('profiles').select('id,nombre,username,email,tel,role,puntos_codigos,created_at').order('created_at');
+  if(error){list.innerHTML='<p style="opacity:.6">Error: '+error.message+'</p>';return}
+  if(!data||!data.length){list.innerHTML='<p style="opacity:.6">Sin usuarios registrados</p>';return}
+  list.innerHTML = `<div style="opacity:.7;margin-bottom:.4rem"><b>${data.length}</b> usuario(s) registrados</div>`
+    + data.map(u=>`
+      <div style="padding:.35rem .4rem;border-bottom:1px dashed #333">
+        <b>${u.nombre||'(sin nombre)'}</b>
+        ${u.username?`<span style="color:var(--dorado)"> · @${u.username}</span>`:''}
+        <span style="opacity:.7"> · ${u.email||''}</span>
+        <br>
+        <span style="font-size:.7rem;opacity:.6">${u.tel||'sin tel'} · rol: ${u.role} · ${u.puntos_codigos||0} pts (códigos)</span>
+      </div>`).join('');
+}
+
+async function exportarUsuariosCSV(){
+  if(sbProfile?.role!=='admin'){toast('Solo admin','err');return}
+  const {data,error} = await sb.from('profiles').select('nombre,username,email,tel,role,puntos_codigos,created_at').order('created_at');
+  if(error){toast(error.message,'err');return}
+  const header = ['nombre','username','email','telefono','rol','puntos_codigos','fecha_registro'];
+  const lines = [header.join(',')];
+  (data||[]).forEach(u=>{
+    lines.push([
+      (u.nombre||'').replace(/,/g,' '),
+      u.username||'',
+      u.email||'',
+      u.tel||'',
+      u.role||'',
+      u.puntos_codigos||0,
+      u.created_at||''
+    ].join(','));
+  });
+  _downloadCSV('usuarios-quiniela.csv', lines.join('\n'));
+}
+
+function _downloadCSV(filename, content){
+  const blob = new Blob(['\uFEFF'+content],{type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},100);
 }
 
 async function guardarResultado(mid){
