@@ -772,10 +772,9 @@ td.pts{color:var(--dorado);font-weight:900}
         </div>
         <div style="margin:.6rem 0;padding:.6rem;background:rgba(255,215,0,.08);border:1px dashed var(--dorado);border-radius:6px">
           <p style="font-size:.75rem;opacity:.9;margin-bottom:.4rem">
-            <b>Folios automáticos del Mundial:</b> genera <b>1 folio de VISITA por cada día de partido</b> (formato VIS-AAAAMMDD-XXXX) y <b>1 folio de CONSUMO por cada partido</b> (formato CON-{matchId}-XXXX). Estos folios solo los ves tú como admin.
+            <b>Calendario de folios del Mundial:</b> 39 folios de <b>VISITA</b> + 39 de <b>CONSUMO</b>, uno por cada día del 11/jun → 19/jul/2026. Cada folio es válido <b>solo en su fecha</b> y cada usuario puede canjearlo <b>una sola vez</b>.
           </p>
-          <button class="btn-ok" onclick="generarFoliosMundial()">⚡ GENERAR FOLIOS MUNDIAL</button>
-          <button onclick="exportarFoliosCSV()" style="background:#111;color:var(--dorado);border:1px solid var(--dorado);padding:.4rem .8rem;border-radius:6px;margin-left:.4rem">📥 EXPORTAR CSV</button>
+          <button onclick="exportarFoliosCSV()" style="background:#111;color:var(--dorado);border:1px solid var(--dorado);padding:.4rem .8rem;border-radius:6px">📥 EXPORTAR CSV</button>
         </div>
         <div id="codes-list" style="font-size:.8rem;max-height:260px;overflow-y:auto"></div>
       </div>
@@ -1761,16 +1760,22 @@ async function generarFoliosMundial(){
 
 async function exportarFoliosCSV(){
   if(sbProfile?.role!=='admin'){toast('Solo admin','err');return}
-  const {data,error} = await sb.from('codigos').select('code,tipo,usado,created_at,profiles(nombre,email)').order('created_at');
+  const {data:codigos,error} = await sb.from('codigos').select('code,tipo,fecha_valida').order('fecha_valida');
   if(error){toast(error.message,'err');return}
-  const header = ['codigo','tipo','estado','canjeado_por_nombre','canjeado_por_email','creado'];
+  const {data:canjes} = await sb.from('codigos_canjeados').select('code,redeemed_at,profiles(nombre,email)');
+  const map = {};
+  (canjes||[]).forEach(c=>{
+    if(!map[c.code]) map[c.code]=[];
+    map[c.code].push(`${c.profiles?.nombre||'?'} (${c.profiles?.email||'?'})`);
+  });
+  const header = ['codigo','tipo','fecha_valida','total_canjes','canjeado_por'];
   const lines = [header.join(',')];
-  (data||[]).forEach(c=>{
+  (codigos||[]).forEach(c=>{
+    const list = map[c.code]||[];
     lines.push([
-      c.code, c.tipo, c.usado?'usado':'disponible',
-      (c.profiles?.nombre||'').replace(/,/g,' '),
-      (c.profiles?.email||'').replace(/,/g,' '),
-      c.created_at
+      c.code, c.tipo, c.fecha_valida||'',
+      list.length,
+      list.join(' | ').replace(/,/g,' ')
     ].join(','));
   });
   _downloadCSV('folios-la-corte.csv', lines.join('\n'));
@@ -1848,13 +1853,18 @@ async function guardarResultado(mid){
 
 async function renderCodigos(){
   const list = document.getElementById('codes-list');
-  const {data} = await sb.from('codigos').select('*,profiles(nombre)').order('created_at');
-  list.innerHTML=(data||[]).map(c=>`
+  const {data} = await sb.from('codigos').select('code,tipo,fecha_valida').order('fecha_valida');
+  const today = new Date().toISOString().slice(0,10);
+  list.innerHTML=(data||[]).map(c=>{
+    const isToday = c.fecha_valida===today;
+    const fecha = c.fecha_valida ? new Date(c.fecha_valida+'T12:00').toLocaleDateString('es-MX',{day:'2-digit',month:'short'}) : '';
+    return `
     <div style="padding:.2rem .4rem;border-bottom:1px dashed #333">
-      <b style="color:${c.usado?'#888':'var(--dorado)'}">${c.code}</b>
-      <span style="opacity:.7">· ${c.tipo} · ${c.usado?('Usado por '+(c.profiles?.nombre||'?')):'Disponible'}</span>
+      <b style="color:${isToday?'var(--dorado)':'#888'}">${c.code}</b>
+      <span style="opacity:.7">· ${c.tipo} · ${fecha}${isToday?' <span style="color:var(--dorado)">· HOY</span>':''}</span>
       ${sbProfile?.role==='admin'?`<button onclick="borrarCodigo('${c.code}')" style="float:right;color:#f55">✕</button>`:''}
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 async function crearCodigo(){
@@ -1928,7 +1938,7 @@ async function resetGeneral(){
   if(!confirm('¿Estás seguro? Esta acción es irreversible.'))return;
   await sb.from('predicciones').delete().neq('id','00000000-0000-0000-0000-000000000000');
   await sb.from('profiles').update({puntos_codigos:0}).neq('id','00000000-0000-0000-0000-000000000000');
-  await sb.from('codigos').update({usado:false,por_user_id:null}).neq('code','_');
+  await sb.from('codigos_canjeados').delete().neq('code','_');
   await sb.from('matches').update({score_a:null,score_b:null,first_scorer:null,team_a:'TBD',team_b:'TBD'})
     .eq('phase','ko');
   await sb.from('matches').update({score_a:null,score_b:null,first_scorer:null})
