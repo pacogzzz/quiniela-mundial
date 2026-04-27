@@ -1791,13 +1791,29 @@ async function renderUsuarios(){
   if(!data||!data.length){list.innerHTML='<p style="opacity:.6">Sin usuarios registrados</p>';return}
   list.innerHTML = `<div style="opacity:.7;margin-bottom:.4rem"><b>${data.length}</b> usuario(s) registrados</div>`
     + data.map(u=>`
-      <div style="padding:.35rem .4rem;border-bottom:1px dashed #333">
-        <b>${u.nombre||'(sin nombre)'}</b>
-        ${u.username?`<span style="color:var(--dorado)"> · @${u.username}</span>`:''}
-        <span style="opacity:.7"> · ${u.email||''}</span>
-        <br>
-        <span style="font-size:.7rem;opacity:.6">${u.tel||'sin tel'} · rol: ${u.role} · ${u.puntos_codigos||0} pts (códigos)</span>
+      <div style="padding:.35rem .4rem;border-bottom:1px dashed #333;display:flex;justify-content:space-between;align-items:center;gap:.5rem">
+        <div style="flex:1;min-width:0">
+          <b>${u.nombre||'(sin nombre)'}</b>
+          ${u.username?`<span style="color:var(--dorado)"> · @${u.username}</span>`:''}
+          <span style="opacity:.7"> · ${u.email||''}</span>
+          <br>
+          <span style="font-size:.7rem;opacity:.6">${u.tel||'sin tel'} · rol: ${u.role} · ${u.puntos_codigos||0} pts (códigos)</span>
+        </div>
+        ${sbProfile?.role==='admin'?`<button onclick="resetearPuntosUsuario('${u.id}','${(u.nombre||u.email||'usuario').replace(/'/g,"\\'")}')" title="Resetear puntos y canjes de este usuario" style="background:#222;color:#f55;border:1px solid #f55;border-radius:6px;padding:.3rem .5rem;cursor:pointer;font-size:.75rem;white-space:nowrap">🔄 Reset</button>`:''}
       </div>`).join('');
+}
+
+async function resetearPuntosUsuario(userId, nombre){
+  if(sbProfile?.role!=='admin'){toast('Solo admin','err');return}
+  if(!confirm('¿Resetear puntos y canjes de '+nombre+'? Borrará todos sus folios canjeados y pondrá sus pts en 0.'))return;
+  const {data,error} = await sb.rpc('admin_reset_user_points',{p_user_id:userId});
+  if(error){toast('Error: '+error.message,'err');return}
+  if(!data?.ok){toast(data?.msg||'No se pudo','err');return}
+  toast('🔄 '+data.msg);
+  if(userId===sbProfile?.id) await loadProfile();
+  await renderUsuarios();
+  await renderRanking();
+  renderQuiniela();
 }
 
 async function exportarUsuariosCSV(){
