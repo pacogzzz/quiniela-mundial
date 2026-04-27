@@ -694,7 +694,7 @@ td.pts{color:var(--dorado);font-weight:900}
         <h3>🏠 CÓDIGO DE VISITA</h3>
         <p style="font-size:.8rem;opacity:.8;margin-bottom:.5rem">Ingresa el código que te dieron al visitar La Corte</p>
         <div class="row">
-          <input type="text" id="codigo-visita" placeholder="CÓDIGO DE VISITA" maxlength="12" />
+          <input type="text" id="codigo-visita" placeholder="CÓDIGO DE VISITA" maxlength="24" style="text-transform:uppercase;letter-spacing:.5px;flex:1;min-width:0" />
           <button onclick="canjearCodigo('visita')">+15 PTS</button>
         </div>
       </div>
@@ -703,8 +703,8 @@ td.pts{color:var(--dorado);font-weight:900}
         <h3>🍔 CÓDIGO DE CONSUMO</h3>
         <p style="font-size:.8rem;opacity:.8;margin-bottom:.5rem">Ingresa el código que aparece en tu ticket de consumo</p>
         <div class="row">
-          <input type="text" id="codigo-consumo" placeholder="CÓDIGO DE CONSUMO" maxlength="12" />
-          <button onclick="canjearCodigo('consumo')">+15 PTS</button>
+          <input type="text" id="codigo-consumo" placeholder="CÓDIGO DE CONSUMO" maxlength="24" style="text-transform:uppercase;letter-spacing:.5px;flex:1;min-width:0" />
+          <button onclick="canjearCodigo('consumo')">+20 PTS</button>
         </div>
       </div>
 
@@ -1717,7 +1717,8 @@ async function renderAdmin(){
         <option value="B" ${r.firstScorer==='B'?'selected':''}>${TEAMS[m.teamB]?TEAMS[m.teamB].name:'B'}</option>
         <option value="none" ${r.firstScorer==='none'?'selected':''}>Sin goles</option>
       </select>
-      <button class="btn-ok" onclick="guardarResultado('${m.id}')">💾</button>`;
+      <button class="btn-ok" onclick="guardarResultado('${m.id}')">💾</button>
+      <button onclick="borrarResultado('${m.id}')" title="Borrar marcador" style="background:#222;color:#f55;border:1px solid #f55;border-radius:6px;padding:.3rem .5rem;cursor:pointer">🗑️</button>`;
     cont.appendChild(row);
   });
   await renderCodigos();
@@ -1826,6 +1827,27 @@ function _downloadCSV(filename, content){
   a.href = url; a.download = filename;
   document.body.appendChild(a); a.click();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},100);
+}
+
+async function borrarResultado(mid){
+  if(!isAdminOrManager()){toast('Sin permiso','err');return}
+  if(!confirm('¿Borrar marcador de este partido? Los usuarios podrán volver a predecir si el partido aún no empieza.'))return;
+  const {error} = await sb.from('matches').update({
+    score_a:null, score_b:null, first_scorer:null
+  }).eq('id',mid);
+  if(error){toast('Error: '+error.message,'err');return}
+  const idx = allMatches.findIndex(m=>m.id===mid);
+  if(idx>=0){
+    allMatches[idx].result=null;
+    allMatches[idx].score_a=null;allMatches[idx].score_b=null;allMatches[idx].first_scorer=null;
+  }
+  document.getElementById('adA-'+mid).value='';
+  document.getElementById('adB-'+mid).value='';
+  document.getElementById('adF-'+mid).value='';
+  toast('🗑️ Marcador borrado');
+  renderGrupos(); renderBracket();
+  if(sbProfile) renderQuiniela();
+  await renderRanking();
 }
 
 async function guardarResultado(mid){
