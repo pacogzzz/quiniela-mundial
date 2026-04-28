@@ -1195,7 +1195,7 @@ function runSplash(){
   let onGesture = null;
 
   if(sndEstadio){ sndEstadio.volume = 0.55; }
-  if(sndGol){     sndGol.volume     = 0.95; }
+  if(sndGol){     sndGol.volume     = 1.0;  }
 
   const stopGolNow = ()=>{
     if(goalStopTimer){ clearTimeout(goalStopTimer); goalStopTimer = null; }
@@ -1242,6 +1242,9 @@ function runSplash(){
         const GOL_MAX_S  = 6;
         goalTimer = setTimeout(()=>{
           if(dismissed && !goalStarted) return; // si se cerró antes y no arrancó, no lo arranques
+          // ⛔ Apaga el ambiente del estadio ANTES del grito para que el grito se escuche limpio.
+          // Esa era la razón por la que solo se oía "estadio" — los cánticos enmascaraban el grito.
+          try{ if(sndEstadio){ sndEstadio.pause(); } }catch(_){}
           const playGol = ()=>{
             try{
               if(sndGol.readyState < 2){
@@ -1255,8 +1258,7 @@ function runSplash(){
               if(pg && pg.then){
                 pg.then(()=>{
                   goalStarted = true;
-                  console.log('[splash] gol playing OK');
-                  // Tope de seguridad: corta el grito a los GOL_MAX_S
+                  console.log('[splash] gol playing OK (estadio pausado)');
                   goalStopTimer = setTimeout(stopGolNow, GOL_MAX_S * 1000);
                 }).catch(err=>console.warn('[splash] gol play fail:', err));
               } else {
