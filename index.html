@@ -591,8 +591,7 @@ td.pts{color:var(--dorado);font-weight:900}
 <!-- ========== SPLASH WELCOME + CHILENA ========== -->
 <div id="splash">
   <audio id="snd-estadio" src="assets/audio/estadio.mp3" loop preload="auto"></audio>
-  <!-- #t=5 hace que el navegador empiece la reproducción en el segundo 5 (donde está el grito) -->
-  <audio id="snd-gol"     src="assets/audio/gol.mp3#t=5" preload="auto"></audio>
+  <audio id="snd-gol"     src="assets/audio/gol.mp3"     preload="auto"></audio>
   <div class="sp-msg m1">EL MUNDIAL SE VIVE EN LA CORTE</div>
   <div class="sp-msg m2">Bienvenido a tu Quiniela,<br>donde tu mesa también juega el mundial</div>
   <div class="sp-msg m3">La Corte,<br>cancha oficial de la afición</div>
@@ -1238,9 +1237,9 @@ function runSplash(){
       }
       if(sndGol){
         // Segundos a saltar al inicio del archivo para llegar directo al grito.
-        const GOL_SKIP_S = 5;
+        const GOL_SKIP_S = 0;
         // Cuánto dejamos sonar el grito como máximo (incluso si el splash ya cerró).
-        const GOL_MAX_S  = 5;
+        const GOL_MAX_S  = 6;
         goalTimer = setTimeout(()=>{
           if(dismissed && !goalStarted) return; // si se cerró antes y no arrancó, no lo arranques
           const playGol = ()=>{
