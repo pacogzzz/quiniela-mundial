@@ -590,10 +590,8 @@ td.pts{color:var(--dorado);font-weight:900}
 
 <!-- ========== SPLASH WELCOME + CHILENA ========== -->
 <div id="splash">
-  <!-- Un único <audio> que cambia de src: arranca con estadio, salta a gol al final -->
-  <audio id="snd-main" src="assets/audio/estadio.mp3" loop preload="auto"></audio>
-  <!-- Precargamos gol.mp3 en silencio para que esté listo al instante del cambio -->
-  <link rel="preload" as="audio" href="assets/audio/gol.mp3">
+  <!-- Un único archivo combo: ~8s de estadio + grito de gol fusionados en un solo MP3 -->
+  <audio id="snd-main" src="assets/audio/combo.mp3" preload="auto"></audio>
   <div class="sp-msg m1">EL MUNDIAL SE VIVE EN LA CORTE</div>
   <div class="sp-msg m2">Bienvenido a tu Quiniela,<br>donde tu mesa también juega el mundial</div>
   <div class="sp-msg m3">La Corte,<br>cancha oficial de la afición</div>
@@ -1188,62 +1186,28 @@ function runSplash(){
   const s = document.getElementById('splash');
   if(!s) return;
 
-  // Un solo elemento <audio>: arranca como estadio (loop), a los 8.6s salta a gol.
-  // Esto evita los bugs raros de tener 2 <audio> simultáneos en algunos navegadores.
+  // UN SOLO archivo (combo.mp3) con estadio + gol fusionados.
+  // Sin swaps, sin cambios de src, sin dos audios. La forma más simple posible.
   const snd = document.getElementById('snd-main');
-  const ESTADIO_URL = 'assets/audio/estadio.mp3';
-  const GOL_URL     = 'assets/audio/gol.mp3';
-  const GOL_MAX_S   = 6;
+  let dismissed = false;
+  let onGesture = null;
 
-  let switchTimer = null;
-  let stopTimer   = null;
-  let golStarted  = false;
-  let dismissed   = false;
-  let onGesture   = null;
-
-  if(snd){ snd.volume = 0.7; }
+  if(snd) snd.volume = 0.85;
 
   const btnSound = document.getElementById('sp-sound');
   const showSoundBtn = ()=>{ if(btnSound && !dismissed) btnSound.classList.remove('hidden'); };
   const hideSoundBtn = ()=>{ if(btnSound) btnSound.classList.add('hidden'); };
 
-  const stopAll = ()=>{
-    if(switchTimer){ clearTimeout(switchTimer); switchTimer = null; }
-    if(stopTimer){   clearTimeout(stopTimer);   stopTimer   = null; }
-    try{ if(snd){ snd.pause(); snd.currentTime = 0; } }catch(_){}
-  };
-
-  // Cambia el src a gol.mp3 y reproduce
-  const switchToGol = ()=>{
-    if(!snd || dismissed) return;
-    try{
-      snd.loop = false;
-      snd.pause();
-      snd.src    = GOL_URL;
-      snd.volume = 1.0;
-      snd.load();
-      const p = snd.play();
-      if(p && p.then){
-        p.then(()=>{
-          golStarted = true;
-          console.log('[splash] GOL reproduciendo OK (src cambiado)');
-          stopTimer = setTimeout(()=>{ try{ snd.pause(); }catch(_){} }, GOL_MAX_S * 1000);
-        }).catch(err=>console.warn('[splash] GOL play fail:', err));
-      } else {
-        golStarted = true;
-      }
-    }catch(e){ console.warn('[splash] GOL err:', e); }
-  };
-
-  // Arranca el estadio + agenda el cambio a gol a los 8.6s
   const startAudio = ()=>{
     if(dismissed || !snd) return;
-    snd.loop = true;
-    snd.src  = ESTADIO_URL;
-    snd.volume = 0.7;
+    try{ snd.currentTime = 0; }catch(_){}
     const p = snd.play();
-    if(p && p.catch) p.catch(()=>{});
-    switchTimer = setTimeout(switchToGol, 8600);
+    if(p && p.then) p.then(()=>console.log('[splash] combo audio OK'))
+                     .catch(err=>console.warn('[splash] combo fail:', err));
+  };
+
+  const stopAudio = ()=>{
+    try{ if(snd){ snd.pause(); snd.currentTime = 0; } }catch(_){}
   };
 
   if(btnSound){
@@ -1259,7 +1223,7 @@ function runSplash(){
     };
   }
 
-  // Autoplay: intentar directo; si bloquea, mostrar botón + listener de gesto.
+  // Autoplay: probar directo; si falla, esperar gesto.
   const tryStart = ()=>{
     if(!snd) return;
     const p = snd.play();
@@ -1286,6 +1250,10 @@ function runSplash(){
   };
   tryStart();
 
+  // Hard-stop del audio (corta el combo aunque ya no haya splash visible)
+  const HARD_STOP_MS = 15000;
+  setTimeout(stopAudio, HARD_STOP_MS);
+
   const dismiss = ()=>{
     if(dismissed) return;
     dismissed = true;
@@ -1295,17 +1263,13 @@ function runSplash(){
       onGesture = null;
     }
     hideSoundBtn();
-    // Si el grito ya empezó, lo dejamos sonar hasta GOL_MAX_S (stopTimer se encarga).
-    // Si todavía no arrancó, paramos todo.
-    if(!golStarted){
-      stopAll();
-    } else if(switchTimer){
-      clearTimeout(switchTimer); switchTimer = null;
-    }
+    // OJO: NO cortamos el audio aquí — se corta solo a los 15s con HARD_STOP_MS,
+    // así el grito de gol alcanza a oírse aunque el splash visual ya haya cerrado.
     s.classList.add('done');
     setTimeout(()=>s.remove(), 600);
   };
-  document.getElementById('sp-skip').onclick = dismiss;
+  document.getElementById('sp-skip').onclick = ()=>{ stopAudio(); dismiss(); };
+  // Splash visual cierra a los 11s (igual que antes)
   setTimeout(dismiss, 11000);
 }
 
