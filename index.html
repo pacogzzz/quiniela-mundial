@@ -1190,16 +1190,24 @@ function runSplash(){
   const sndEstadio = document.getElementById('snd-estadio');
   const sndGol     = document.getElementById('snd-gol');
   let goalTimer = null;
+  let goalStopTimer = null;
+  let goalStarted = false;
   let dismissed = false;
   let onGesture = null;
 
   if(sndEstadio){ sndEstadio.volume = 0.55; }
   if(sndGol){     sndGol.volume     = 0.95; }
 
+  const stopGolNow = ()=>{
+    if(goalStopTimer){ clearTimeout(goalStopTimer); goalStopTimer = null; }
+    try{ if(sndGol){ sndGol.pause(); sndGol.currentTime = 0; } }catch(_){}
+  };
   const stopAllAudio = ()=>{
     if(goalTimer){ clearTimeout(goalTimer); goalTimer = null; }
     try{ if(sndEstadio){ sndEstadio.pause(); sndEstadio.currentTime = 0; } }catch(_){}
-    try{ if(sndGol){     sndGol.pause();     sndGol.currentTime     = 0; } }catch(_){}
+    // El grito de gol se deja seguir hasta su tope (goalStopTimer) para que no se corte
+    // si el splash se cierra antes. Solo lo cancelamos si todavía no había arrancado.
+    if(!goalStarted){ stopGolNow(); }
   };
 
   // "Primea" un audio: play silencioso instantáneo → lo deja desbloqueado
@@ -1231,11 +1239,12 @@ function runSplash(){
       if(sndGol){
         // Segundos a saltar al inicio del archivo para llegar directo al grito.
         const GOL_SKIP_S = 5;
+        // Cuánto dejamos sonar el grito como máximo (incluso si el splash ya cerró).
+        const GOL_MAX_S  = 5;
         goalTimer = setTimeout(()=>{
-          if(dismissed) return;
+          if(dismissed && !goalStarted) return; // si se cerró antes y no arrancó, no lo arranques
           const playGol = ()=>{
             try{
-              // Algunos navegadores ignoran currentTime si readyState < 2 (HAVE_CURRENT_DATA).
               if(sndGol.readyState < 2){
                 sndGol.addEventListener('canplay', playGol, {once:true});
                 sndGol.load();
@@ -1245,8 +1254,15 @@ function runSplash(){
               console.log('[splash] gol duration:', sndGol.duration, 's, currentTime:', sndGol.currentTime);
               const pg = sndGol.play();
               if(pg && pg.then){
-                pg.then(()=>console.log('[splash] gol playing OK'))
-                  .catch(err=>console.warn('[splash] gol play fail:', err));
+                pg.then(()=>{
+                  goalStarted = true;
+                  console.log('[splash] gol playing OK');
+                  // Tope de seguridad: corta el grito a los GOL_MAX_S
+                  goalStopTimer = setTimeout(stopGolNow, GOL_MAX_S * 1000);
+                }).catch(err=>console.warn('[splash] gol play fail:', err));
+              } else {
+                goalStarted = true;
+                goalStopTimer = setTimeout(stopGolNow, GOL_MAX_S * 1000);
               }
             }catch(e){ console.warn('[splash] gol err:', e); }
           };
