@@ -1173,44 +1173,53 @@ function runSplash(){
   const sndEstadio = document.getElementById('snd-estadio');
   const sndGol     = document.getElementById('snd-gol');
   let goalTimer = null;
+  let dismissed = false;
+  let onGesture = null;
 
-  // Volúmenes balanceados
   if(sndEstadio){ sndEstadio.volume = 0.55; }
   if(sndGol){     sndGol.volume     = 0.95; }
 
-  // Inicia el ambiente de estadio + programa el grito de gol cuando aparece "GOOL!!"
+  const stopAllAudio = ()=>{
+    if(goalTimer){ clearTimeout(goalTimer); goalTimer = null; }
+    try{ if(sndEstadio){ sndEstadio.pause(); sndEstadio.currentTime = 0; } }catch(_){}
+    try{ if(sndGol){     sndGol.pause();     sndGol.currentTime     = 0; } }catch(_){}
+  };
+
+  // Inicia el ambiente + programa el grito de gol (sólo si no se ha cerrado el splash)
   const startAudio = ()=>{
+    if(dismissed) return;
     if(sndEstadio){
       sndEstadio.currentTime = 0;
       const p = sndEstadio.play();
       if(p && p.catch) p.catch(()=>{});
     }
-    // El texto GOOL aparece a los 8.6s del splash → grito en sincronía
     if(sndGol){
       goalTimer = setTimeout(()=>{
+        if(dismissed) return;
         try{ sndGol.currentTime = 0; sndGol.play().catch(()=>{}); }catch(_){}
       }, 8600);
     }
   };
 
-  // Algunos navegadores bloquean autoplay sin gesto del usuario.
-  // Intentamos reproducir; si falla, esperamos al primer toque/click.
+  // Autoplay: intentamos directo; si el navegador lo bloquea, esperamos al primer gesto.
   const tryStart = ()=>{
-    if(!sndEstadio){ return; }
+    if(!sndEstadio) return;
     const p = sndEstadio.play();
     if(p && p.then){
       p.then(()=>{
-        sndEstadio.pause(); sndEstadio.currentTime = 0;
+        // Reseteamos por si arrancó silencioso, y arrancamos en limpio
+        try{ sndEstadio.pause(); sndEstadio.currentTime = 0; }catch(_){}
         startAudio();
       }).catch(()=>{
-        // Autoplay bloqueado — espera al primer gesto
-        const onGesture = ()=>{
-          document.removeEventListener('click',     onGesture);
-          document.removeEventListener('touchstart',onGesture);
+        onGesture = ()=>{
+          document.removeEventListener('click',      onGesture, true);
+          document.removeEventListener('touchstart', onGesture, true);
+          onGesture = null;
+          if(dismissed) return; // ya cerró el splash → no arranques nada
           startAudio();
         };
-        document.addEventListener('click',     onGesture, {once:true});
-        document.addEventListener('touchstart',onGesture, {once:true});
+        document.addEventListener('click',      onGesture, true);
+        document.addEventListener('touchstart', onGesture, true);
       });
     } else {
       startAudio();
@@ -1218,12 +1227,16 @@ function runSplash(){
   };
   tryStart();
 
-  let dismissed = false;
   const dismiss = ()=>{
-    if(dismissed) return; dismissed = true;
-    if(goalTimer) clearTimeout(goalTimer);
-    try{ sndEstadio && sndEstadio.pause(); }catch(_){}
-    try{ sndGol     && sndGol.pause();     }catch(_){}
+    if(dismissed) return;
+    dismissed = true;
+    // Quita listeners pendientes de "primer gesto" para que el audio no se dispare en el login
+    if(onGesture){
+      document.removeEventListener('click',      onGesture, true);
+      document.removeEventListener('touchstart', onGesture, true);
+      onGesture = null;
+    }
+    stopAllAudio();
     s.classList.add('done');
     setTimeout(()=>s.remove(), 600);
   };
