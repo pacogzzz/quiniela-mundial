@@ -1201,20 +1201,43 @@ function runSplash(){
     try{ if(sndGol){     sndGol.pause();     sndGol.currentTime     = 0; } }catch(_){}
   };
 
+  // "Primea" un audio: play silencioso instantáneo → lo deja desbloqueado
+  // para reproducir más tarde sin gesto (Chrome/Safari/Firefox lo permiten así).
+  const primeAudio = (a)=>{
+    if(!a) return Promise.resolve();
+    const prevVol = a.volume;
+    a.volume = 0;
+    const p = a.play();
+    return (p && p.then ? p : Promise.resolve())
+      .then(()=>{
+        try{ a.pause(); a.currentTime = 0; }catch(_){}
+        a.volume = prevVol;
+      })
+      .catch(()=>{ a.volume = prevVol; });
+  };
+
   // Inicia el ambiente + programa el grito de gol (sólo si no se ha cerrado el splash)
   const startAudio = ()=>{
     if(dismissed) return;
-    if(sndEstadio){
-      sndEstadio.currentTime = 0;
-      const p = sndEstadio.play();
-      if(p && p.catch) p.catch(()=>{});
-    }
-    if(sndGol){
-      goalTimer = setTimeout(()=>{
-        if(dismissed) return;
-        try{ sndGol.currentTime = 0; sndGol.play().catch(()=>{}); }catch(_){}
-      }, 8600);
-    }
+    // Desbloquea AMBOS audios ahora que tenemos permiso (por autoplay o por gesto).
+    // El gol se quedará primeado y listo para sonar a los 8.6s sin fallar.
+    primeAudio(sndGol).then(()=>{
+      if(sndEstadio && !dismissed){
+        sndEstadio.currentTime = 0;
+        const p = sndEstadio.play();
+        if(p && p.catch) p.catch(()=>{});
+      }
+      if(sndGol){
+        goalTimer = setTimeout(()=>{
+          if(dismissed) return;
+          try{
+            sndGol.currentTime = 0;
+            const pg = sndGol.play();
+            if(pg && pg.catch) pg.catch(err=>console.warn('[splash] gol play fail:', err));
+          }catch(e){ console.warn('[splash] gol err:', e); }
+        }, 8600);
+      }
+    });
   };
 
   const btnSound = document.getElementById('sp-sound');
