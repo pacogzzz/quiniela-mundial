@@ -590,8 +590,10 @@ td.pts{color:var(--dorado);font-weight:900}
 
 <!-- ========== SPLASH WELCOME + CHILENA ========== -->
 <div id="splash">
-  <audio id="snd-estadio" src="assets/audio/estadio.mp3" loop preload="auto"></audio>
-  <audio id="snd-gol"     src="assets/audio/gol.mp3"     preload="auto"></audio>
+  <!-- Un único <audio> que cambia de src: arranca con estadio, salta a gol al final -->
+  <audio id="snd-main" src="assets/audio/estadio.mp3" loop preload="auto"></audio>
+  <!-- Precargamos gol.mp3 en silencio para que esté listo al instante del cambio -->
+  <link rel="preload" as="audio" href="assets/audio/gol.mp3">
   <div class="sp-msg m1">EL MUNDIAL SE VIVE EN LA CORTE</div>
   <div class="sp-msg m2">Bienvenido a tu Quiniela,<br>donde tu mesa también juega el mundial</div>
   <div class="sp-msg m3">La Corte,<br>cancha oficial de la afición</div>
@@ -1186,100 +1188,64 @@ function runSplash(){
   const s = document.getElementById('splash');
   if(!s) return;
 
-  const sndEstadio = document.getElementById('snd-estadio');
-  const sndGol     = document.getElementById('snd-gol');
-  let goalTimer = null;
-  let goalStopTimer = null;
-  let goalStarted = false;
-  let dismissed = false;
-  let onGesture = null;
+  // Un solo elemento <audio>: arranca como estadio (loop), a los 8.6s salta a gol.
+  // Esto evita los bugs raros de tener 2 <audio> simultáneos en algunos navegadores.
+  const snd = document.getElementById('snd-main');
+  const ESTADIO_URL = 'assets/audio/estadio.mp3';
+  const GOL_URL     = 'assets/audio/gol.mp3';
+  const GOL_MAX_S   = 6;
 
-  if(sndEstadio){ sndEstadio.volume = 0.55; }
-  if(sndGol){     sndGol.volume     = 1.0;  }
+  let switchTimer = null;
+  let stopTimer   = null;
+  let golStarted  = false;
+  let dismissed   = false;
+  let onGesture   = null;
 
-  const stopGolNow = ()=>{
-    if(goalStopTimer){ clearTimeout(goalStopTimer); goalStopTimer = null; }
-    try{ if(sndGol){ sndGol.pause(); sndGol.currentTime = 0; } }catch(_){}
-  };
-  const stopAllAudio = ()=>{
-    if(goalTimer){ clearTimeout(goalTimer); goalTimer = null; }
-    try{ if(sndEstadio){ sndEstadio.pause(); sndEstadio.currentTime = 0; } }catch(_){}
-    // El grito de gol se deja seguir hasta su tope (goalStopTimer) para que no se corte
-    // si el splash se cierra antes. Solo lo cancelamos si todavía no había arrancado.
-    if(!goalStarted){ stopGolNow(); }
-  };
-
-  // "Primea" un audio: play silencioso instantáneo → lo deja desbloqueado
-  // para reproducir más tarde sin gesto (Chrome/Safari/Firefox lo permiten así).
-  const primeAudio = (a)=>{
-    if(!a) return Promise.resolve();
-    const prevVol = a.volume;
-    a.volume = 0;
-    const p = a.play();
-    return (p && p.then ? p : Promise.resolve())
-      .then(()=>{
-        try{ a.pause(); a.currentTime = 0; }catch(_){}
-        a.volume = prevVol;
-      })
-      .catch(()=>{ a.volume = prevVol; });
-  };
-
-  // Inicia el ambiente + programa el grito de gol (sólo si no se ha cerrado el splash)
-  const startAudio = ()=>{
-    if(dismissed) return;
-    // Desbloquea AMBOS audios ahora que tenemos permiso (por autoplay o por gesto).
-    // El gol se quedará primeado y listo para sonar a los 8.6s sin fallar.
-    primeAudio(sndGol).then(()=>{
-      if(sndEstadio && !dismissed){
-        sndEstadio.currentTime = 0;
-        const p = sndEstadio.play();
-        if(p && p.catch) p.catch(()=>{});
-      }
-      if(sndGol){
-        // Segundos a saltar al inicio del archivo para llegar directo al grito.
-        const GOL_SKIP_S = 0;
-        // Cuánto dejamos sonar el grito como máximo (incluso si el splash ya cerró).
-        const GOL_MAX_S  = 6;
-        goalTimer = setTimeout(()=>{
-          if(dismissed && !goalStarted) return; // si se cerró antes y no arrancó, no lo arranques
-          // ⛔ Apaga el ambiente del estadio ANTES del grito para que el grito se escuche limpio.
-          // Esa era la razón por la que solo se oía "estadio" — los cánticos enmascaraban el grito.
-          try{ if(sndEstadio){ sndEstadio.pause(); } }catch(_){}
-          const playGol = ()=>{
-            try{
-              if(sndGol.readyState < 2){
-                sndGol.addEventListener('canplay', playGol, {once:true});
-                sndGol.load();
-                return;
-              }
-              sndGol.currentTime = GOL_SKIP_S;
-              console.log('[splash] gol duration:', sndGol.duration, 's, currentTime:', sndGol.currentTime);
-              const pg = sndGol.play();
-              if(pg && pg.then){
-                pg.then(()=>{
-                  goalStarted = true;
-                  console.log('[splash] gol playing OK (estadio pausado)');
-                  goalStopTimer = setTimeout(stopGolNow, GOL_MAX_S * 1000);
-                }).catch(err=>console.warn('[splash] gol play fail:', err));
-              } else {
-                goalStarted = true;
-                goalStopTimer = setTimeout(stopGolNow, GOL_MAX_S * 1000);
-              }
-            }catch(e){ console.warn('[splash] gol err:', e); }
-          };
-          playGol();
-        }, 8600);
-      }
-    });
-  };
+  if(snd){ snd.volume = 0.7; }
 
   const btnSound = document.getElementById('sp-sound');
-  const showSoundBtn = ()=>{
-    if(btnSound && !dismissed) btnSound.classList.remove('hidden');
+  const showSoundBtn = ()=>{ if(btnSound && !dismissed) btnSound.classList.remove('hidden'); };
+  const hideSoundBtn = ()=>{ if(btnSound) btnSound.classList.add('hidden'); };
+
+  const stopAll = ()=>{
+    if(switchTimer){ clearTimeout(switchTimer); switchTimer = null; }
+    if(stopTimer){   clearTimeout(stopTimer);   stopTimer   = null; }
+    try{ if(snd){ snd.pause(); snd.currentTime = 0; } }catch(_){}
   };
-  const hideSoundBtn = ()=>{
-    if(btnSound) btnSound.classList.add('hidden');
+
+  // Cambia el src a gol.mp3 y reproduce
+  const switchToGol = ()=>{
+    if(!snd || dismissed) return;
+    try{
+      snd.loop = false;
+      snd.pause();
+      snd.src    = GOL_URL;
+      snd.volume = 1.0;
+      snd.load();
+      const p = snd.play();
+      if(p && p.then){
+        p.then(()=>{
+          golStarted = true;
+          console.log('[splash] GOL reproduciendo OK (src cambiado)');
+          stopTimer = setTimeout(()=>{ try{ snd.pause(); }catch(_){} }, GOL_MAX_S * 1000);
+        }).catch(err=>console.warn('[splash] GOL play fail:', err));
+      } else {
+        golStarted = true;
+      }
+    }catch(e){ console.warn('[splash] GOL err:', e); }
   };
+
+  // Arranca el estadio + agenda el cambio a gol a los 8.6s
+  const startAudio = ()=>{
+    if(dismissed || !snd) return;
+    snd.loop = true;
+    snd.src  = ESTADIO_URL;
+    snd.volume = 0.7;
+    const p = snd.play();
+    if(p && p.catch) p.catch(()=>{});
+    switchTimer = setTimeout(switchToGol, 8600);
+  };
+
   if(btnSound){
     btnSound.onclick = (e)=>{
       e.stopPropagation();
@@ -1293,17 +1259,15 @@ function runSplash(){
     };
   }
 
-  // Autoplay: intentamos directo; si el navegador lo bloquea, mostramos botón "🔊 Activar sonido".
+  // Autoplay: intentar directo; si bloquea, mostrar botón + listener de gesto.
   const tryStart = ()=>{
-    if(!sndEstadio){ return; }
-    const p = sndEstadio.play();
+    if(!snd) return;
+    const p = snd.play();
     if(p && p.then){
       p.then(()=>{
-        // Autoplay permitido — reseteamos y empezamos limpio
-        try{ sndEstadio.pause(); sndEstadio.currentTime = 0; }catch(_){}
+        try{ snd.pause(); snd.currentTime = 0; }catch(_){}
         startAudio();
       }).catch(()=>{
-        // Bloqueado: mostramos botón visible + listener silencioso por si tocan en cualquier lado
         showSoundBtn();
         onGesture = ()=>{
           document.removeEventListener('click',      onGesture, true);
@@ -1325,14 +1289,19 @@ function runSplash(){
   const dismiss = ()=>{
     if(dismissed) return;
     dismissed = true;
-    // Quita listeners pendientes de "primer gesto" para que el audio no se dispare en el login
     if(onGesture){
       document.removeEventListener('click',      onGesture, true);
       document.removeEventListener('touchstart', onGesture, true);
       onGesture = null;
     }
     hideSoundBtn();
-    stopAllAudio();
+    // Si el grito ya empezó, lo dejamos sonar hasta GOL_MAX_S (stopTimer se encarga).
+    // Si todavía no arrancó, paramos todo.
+    if(!golStarted){
+      stopAll();
+    } else if(switchTimer){
+      clearTimeout(switchTimer); switchTimer = null;
+    }
     s.classList.add('done');
     setTimeout(()=>s.remove(), 600);
   };
