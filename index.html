@@ -1228,12 +1228,17 @@ function runSplash(){
         if(p && p.catch) p.catch(()=>{});
       }
       if(sndGol){
+        // Si el archivo gol.mp3 tiene intro antes del grito, ajusta GOL_SKIP_S
+        // (segundos a saltar al inicio para llegar directo al "GOOOL").
+        const GOL_SKIP_S = 5;
         goalTimer = setTimeout(()=>{
           if(dismissed) return;
           try{
-            sndGol.currentTime = 0;
+            sndGol.currentTime = GOL_SKIP_S;
+            console.log('[splash] gol duration:', sndGol.duration, 's, skip to:', GOL_SKIP_S);
             const pg = sndGol.play();
-            if(pg && pg.catch) pg.catch(err=>console.warn('[splash] gol play fail:', err));
+            if(pg && pg.then) pg.then(()=>console.log('[splash] gol playing'))
+                                .catch(err=>console.warn('[splash] gol play fail:', err));
           }catch(e){ console.warn('[splash] gol err:', e); }
         }, 8600);
       }
