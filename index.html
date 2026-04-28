@@ -591,7 +591,8 @@ td.pts{color:var(--dorado);font-weight:900}
 <!-- ========== SPLASH WELCOME + CHILENA ========== -->
 <div id="splash">
   <audio id="snd-estadio" src="assets/audio/estadio.mp3" loop preload="auto"></audio>
-  <audio id="snd-gol"     src="assets/audio/gol.mp3"     preload="auto"></audio>
+  <!-- #t=5 hace que el navegador empiece la reproducción en el segundo 5 (donde está el grito) -->
+  <audio id="snd-gol"     src="assets/audio/gol.mp3#t=5" preload="auto"></audio>
   <div class="sp-msg m1">EL MUNDIAL SE VIVE EN LA CORTE</div>
   <div class="sp-msg m2">Bienvenido a tu Quiniela,<br>donde tu mesa también juega el mundial</div>
   <div class="sp-msg m3">La Corte,<br>cancha oficial de la afición</div>
@@ -1228,18 +1229,28 @@ function runSplash(){
         if(p && p.catch) p.catch(()=>{});
       }
       if(sndGol){
-        // Si el archivo gol.mp3 tiene intro antes del grito, ajusta GOL_SKIP_S
-        // (segundos a saltar al inicio para llegar directo al "GOOOL").
+        // Segundos a saltar al inicio del archivo para llegar directo al grito.
         const GOL_SKIP_S = 5;
         goalTimer = setTimeout(()=>{
           if(dismissed) return;
-          try{
-            sndGol.currentTime = GOL_SKIP_S;
-            console.log('[splash] gol duration:', sndGol.duration, 's, skip to:', GOL_SKIP_S);
-            const pg = sndGol.play();
-            if(pg && pg.then) pg.then(()=>console.log('[splash] gol playing'))
-                                .catch(err=>console.warn('[splash] gol play fail:', err));
-          }catch(e){ console.warn('[splash] gol err:', e); }
+          const playGol = ()=>{
+            try{
+              // Algunos navegadores ignoran currentTime si readyState < 2 (HAVE_CURRENT_DATA).
+              if(sndGol.readyState < 2){
+                sndGol.addEventListener('canplay', playGol, {once:true});
+                sndGol.load();
+                return;
+              }
+              sndGol.currentTime = GOL_SKIP_S;
+              console.log('[splash] gol duration:', sndGol.duration, 's, currentTime:', sndGol.currentTime);
+              const pg = sndGol.play();
+              if(pg && pg.then){
+                pg.then(()=>console.log('[splash] gol playing OK'))
+                  .catch(err=>console.warn('[splash] gol play fail:', err));
+              }
+            }catch(e){ console.warn('[splash] gol err:', e); }
+          };
+          playGol();
         }, 8600);
       }
     });
