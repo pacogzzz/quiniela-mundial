@@ -556,6 +556,21 @@ td.pts{color:var(--dorado);font-weight:900}
   font-family:inherit;letter-spacing:1px;
 }
 .sp-skip:hover{background:rgba(0,0,0,.8);border-color:var(--dorado)}
+.sp-sound{
+  position:absolute;bottom:1rem;left:1rem;z-index:10;
+  font-size:.85rem;color:#000;font-weight:800;
+  background:var(--dorado);padding:.55rem 1rem;border-radius:24px;
+  border:2px solid #000;cursor:pointer;
+  font-family:inherit;letter-spacing:1px;
+  box-shadow:0 4px 16px rgba(255,215,0,.5);
+  animation:soundPulse 1.4s ease-in-out infinite;
+}
+.sp-sound:hover{background:#fff;color:#000}
+.sp-sound.hidden{display:none}
+@keyframes soundPulse{
+  0%,100%{transform:scale(1);box-shadow:0 4px 16px rgba(255,215,0,.5)}
+  50%    {transform:scale(1.08);box-shadow:0 6px 22px rgba(255,215,0,.85)}
+}
 
 /* ========= AUTH TABS ========= */
 .auth-tabs{
@@ -587,6 +602,7 @@ td.pts{color:var(--dorado);font-weight:900}
     <img class="sp-keeper" src="assets/img/portero.png" alt="Portero" />
     <div class="sp-gool">GOOL!!</div>
   </div>
+  <button class="sp-sound hidden" id="sp-sound">🔊 Activar sonido</button>
   <button class="sp-skip" id="sp-skip">Saltar ▶</button>
 </div>
 
@@ -1201,21 +1217,44 @@ function runSplash(){
     }
   };
 
-  // Autoplay: intentamos directo; si el navegador lo bloquea, esperamos al primer gesto.
+  const btnSound = document.getElementById('sp-sound');
+  const showSoundBtn = ()=>{
+    if(btnSound && !dismissed) btnSound.classList.remove('hidden');
+  };
+  const hideSoundBtn = ()=>{
+    if(btnSound) btnSound.classList.add('hidden');
+  };
+  if(btnSound){
+    btnSound.onclick = (e)=>{
+      e.stopPropagation();
+      hideSoundBtn();
+      if(onGesture){
+        document.removeEventListener('click',      onGesture, true);
+        document.removeEventListener('touchstart', onGesture, true);
+        onGesture = null;
+      }
+      startAudio();
+    };
+  }
+
+  // Autoplay: intentamos directo; si el navegador lo bloquea, mostramos botón "🔊 Activar sonido".
   const tryStart = ()=>{
-    if(!sndEstadio) return;
+    if(!sndEstadio){ return; }
     const p = sndEstadio.play();
     if(p && p.then){
       p.then(()=>{
-        // Reseteamos por si arrancó silencioso, y arrancamos en limpio
+        // Autoplay permitido — reseteamos y empezamos limpio
         try{ sndEstadio.pause(); sndEstadio.currentTime = 0; }catch(_){}
         startAudio();
       }).catch(()=>{
+        // Bloqueado: mostramos botón visible + listener silencioso por si tocan en cualquier lado
+        showSoundBtn();
         onGesture = ()=>{
           document.removeEventListener('click',      onGesture, true);
           document.removeEventListener('touchstart', onGesture, true);
           onGesture = null;
-          if(dismissed) return; // ya cerró el splash → no arranques nada
+          hideSoundBtn();
+          if(dismissed) return;
           startAudio();
         };
         document.addEventListener('click',      onGesture, true);
@@ -1236,6 +1275,7 @@ function runSplash(){
       document.removeEventListener('touchstart', onGesture, true);
       onGesture = null;
     }
+    hideSoundBtn();
     stopAllAudio();
     s.classList.add('done');
     setTimeout(()=>s.remove(), 600);
