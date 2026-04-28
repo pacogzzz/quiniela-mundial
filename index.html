@@ -474,13 +474,19 @@ td.pts{color:var(--dorado);font-weight:900}
 }
 
 .sp-scene{
-  position:absolute;inset:0;opacity:0;
+  /* Caja 16:9 centrada — se adapta a cualquier pantalla (móvil o escritorio)
+     sin recortar la cancha ni a los jugadores */
+  position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  width:min(100vw, calc(100vh * 16 / 9));
+  height:min(100vh, calc(100vw * 9 / 16));
+  opacity:0;overflow:hidden;
   animation:spSceneIn .4s 7.2s ease forwards;
 }
 @keyframes spSceneIn{to{opacity:1}}
 .sp-ground{
   position:absolute;inset:0;
-  background:url('assets/img/cancha.png') center bottom/cover no-repeat;
+  background:url('assets/img/cancha.png') center center/cover no-repeat;
   box-shadow:inset 0 -40px 80px rgba(0,0,0,.4);
 }
 .sp-player{
@@ -569,13 +575,15 @@ td.pts{color:var(--dorado);font-weight:900}
 
 <!-- ========== SPLASH WELCOME + CHILENA ========== -->
 <div id="splash">
+  <audio id="snd-estadio" src="assets/audio/estadio.mp3" loop preload="auto"></audio>
+  <audio id="snd-gol"     src="assets/audio/gol.mp3"     preload="auto"></audio>
   <div class="sp-msg m1">EL MUNDIAL SE VIVE EN LA CORTE</div>
   <div class="sp-msg m2">Bienvenido a tu Quiniela,<br>donde tu mesa también juega el mundial</div>
   <div class="sp-msg m3">La Corte,<br>cancha oficial de la afición</div>
   <div class="sp-scene">
     <div class="sp-ground"></div>
     <img class="sp-player" src="assets/img/jugador.png" alt="Jugador" />
-    <img class="sp-ball" src="assets/img/balon.png" alt="Balón" />
+    <img class="sp-ball"   src="assets/img/balon.png"   alt="Balón" />
     <img class="sp-keeper" src="assets/img/portero.png" alt="Portero" />
     <div class="sp-gool">GOOL!!</div>
   </div>
@@ -1161,9 +1169,61 @@ async function initApp(){
 function runSplash(){
   const s = document.getElementById('splash');
   if(!s) return;
+
+  const sndEstadio = document.getElementById('snd-estadio');
+  const sndGol     = document.getElementById('snd-gol');
+  let goalTimer = null;
+
+  // Volúmenes balanceados
+  if(sndEstadio){ sndEstadio.volume = 0.55; }
+  if(sndGol){     sndGol.volume     = 0.95; }
+
+  // Inicia el ambiente de estadio + programa el grito de gol cuando aparece "GOOL!!"
+  const startAudio = ()=>{
+    if(sndEstadio){
+      sndEstadio.currentTime = 0;
+      const p = sndEstadio.play();
+      if(p && p.catch) p.catch(()=>{});
+    }
+    // El texto GOOL aparece a los 8.6s del splash → grito en sincronía
+    if(sndGol){
+      goalTimer = setTimeout(()=>{
+        try{ sndGol.currentTime = 0; sndGol.play().catch(()=>{}); }catch(_){}
+      }, 8600);
+    }
+  };
+
+  // Algunos navegadores bloquean autoplay sin gesto del usuario.
+  // Intentamos reproducir; si falla, esperamos al primer toque/click.
+  const tryStart = ()=>{
+    if(!sndEstadio){ return; }
+    const p = sndEstadio.play();
+    if(p && p.then){
+      p.then(()=>{
+        sndEstadio.pause(); sndEstadio.currentTime = 0;
+        startAudio();
+      }).catch(()=>{
+        // Autoplay bloqueado — espera al primer gesto
+        const onGesture = ()=>{
+          document.removeEventListener('click',     onGesture);
+          document.removeEventListener('touchstart',onGesture);
+          startAudio();
+        };
+        document.addEventListener('click',     onGesture, {once:true});
+        document.addEventListener('touchstart',onGesture, {once:true});
+      });
+    } else {
+      startAudio();
+    }
+  };
+  tryStart();
+
   let dismissed = false;
   const dismiss = ()=>{
     if(dismissed) return; dismissed = true;
+    if(goalTimer) clearTimeout(goalTimer);
+    try{ sndEstadio && sndEstadio.pause(); }catch(_){}
+    try{ sndGol     && sndGol.pause();     }catch(_){}
     s.classList.add('done');
     setTimeout(()=>s.remove(), 600);
   };
