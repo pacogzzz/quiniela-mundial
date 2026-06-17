@@ -1750,17 +1750,76 @@ async function guardarPrediccion(mid){
     </div>`;
 }
 
-/* Códigos */
+/* Códigos — con validación de ubicación (solo en La Corte) */
+
+// Pide la ubicación del navegador. Reintenta 2 veces si la primera lectura es imprecisa (>100m).
+function obtenerUbicacion(){
+  return new Promise((resolve, reject)=>{
+    if(!navigator.geolocation){
+      reject(new Error('Tu navegador no soporta ubicación. Usa Chrome o Safari actualizados.'));
+      return;
+    }
+    let intentos = 0;
+    const probar = ()=>{
+      intentos++;
+      navigator.geolocation.getCurrentPosition(
+        (pos)=>{
+          const acc = pos.coords.accuracy; // en metros
+          // Si la precisión es muy mala y todavía nos quedan reintentos, intentamos otra vez
+          if(acc > 100 && intentos < 3){
+            setTimeout(probar, 1500);
+            return;
+          }
+          resolve({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: acc
+          });
+        },
+        (err)=>{
+          if(err.code === 1){ // PERMISSION_DENIED
+            reject(new Error('Activa la ubicación en tu celular para canjear el folio 📍'));
+          } else if(err.code === 3 && intentos < 3){ // TIMEOUT
+            setTimeout(probar, 1500);
+          } else {
+            reject(new Error('No pudimos detectar tu ubicación. Asegúrate de estar en La Corte 📍'));
+          }
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      );
+    };
+    probar();
+  });
+}
+
 async function canjearCodigo(tipo){
   const input = document.getElementById(tipo==='visita'?'codigo-visita':'codigo-consumo');
   const code = input.value.trim().toUpperCase();
-  if(!code){toast('Ingresa un código','err');return}
-  const {data,error} = await sb.rpc('canjear_codigo',{p_code:code, p_tipo:tipo});
-  if(error){toast(error.message,'err');return}
-  if(!data.ok){toast(data.msg,'err');return}
-  input.value='';
+  if(!code){ toast('Ingresa un código','err'); return; }
+
+  // 1) Pedir ubicación con UI de feedback
+  toast('📍 Detectando ubicación...');
+  let ubic;
+  try{
+    ubic = await obtenerUbicacion();
+  }catch(e){
+    toast(e.message || 'No pudimos obtener tu ubicación','err');
+    return;
+  }
+
+  // 2) Llamar al RPC con lat/lng/accuracy
+  const {data, error} = await sb.rpc('canjear_codigo', {
+    p_code:     code,
+    p_tipo:     tipo,
+    p_lat:      ubic.lat,
+    p_lng:      ubic.lng,
+    p_accuracy: ubic.accuracy
+  });
+  if(error){ toast(error.message,'err'); return; }
+  if(!data.ok){ toast(data.msg,'err'); return; }
+
+  input.value = '';
   toast('🎉 '+data.msg);
-  // Refresh profile points and re-render
   await loadProfile();
   renderQuiniela();
   await renderRanking();
