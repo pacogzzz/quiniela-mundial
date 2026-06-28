@@ -1880,19 +1880,30 @@ async function renderAdmin(){
     const r = m.result||{};
     const row = document.createElement('div');
     row.className='admin-match-row';
+
+    // En partidos KO (eliminatorias) muestra inputs para editar nombres de equipo.
+    // En grupos se queda igual (los equipos ya están definidos).
+    const esKO = m.phase === 'ko';
+    const teamACell = esKO
+      ? `<input type="text" id="adTA-${m.id}" value="${m.teamA||''}" placeholder="Equipo A" style="text-align:right;font-size:.75rem;width:100%"/>`
+      : `<div style="text-align:right;font-size:.75rem">${tA}</div>`;
+    const teamBCell = esKO
+      ? `<input type="text" id="adTB-${m.id}" value="${m.teamB||''}" placeholder="Equipo B" style="font-size:.75rem;width:100%"/>`
+      : `<div style="font-size:.75rem">${tB}</div>`;
+
     row.innerHTML=`
-      <div style="text-align:right;font-size:.75rem">${tA}</div>
+      ${teamACell}
       <input type="number" min="0" value="${r.scoreA??''}" id="adA-${m.id}" placeholder="-"/>
       <span>-</span>
       <input type="number" min="0" value="${r.scoreB??''}" id="adB-${m.id}" placeholder="-"/>
-      <div style="font-size:.75rem">${tB}</div>
+      ${teamBCell}
       <select id="adF-${m.id}">
         <option value="">1er anotador</option>
         <option value="A" ${r.firstScorer==='A'?'selected':''}>${TEAMS[m.teamA]?TEAMS[m.teamA].name:'A'}</option>
         <option value="B" ${r.firstScorer==='B'?'selected':''}>${TEAMS[m.teamB]?TEAMS[m.teamB].name:'B'}</option>
         <option value="none" ${r.firstScorer==='none'?'selected':''}>Sin goles</option>
       </select>
-      <button class="btn-ok" onclick="guardarResultado('${m.id}')">💾</button>
+      <button class="btn-ok" onclick="guardarResultado('${m.id}')" title="Guardar marcador">💾</button>
       <button onclick="borrarResultado('${m.id}')" title="Borrar marcador" style="background:#222;color:#f55;border:1px solid #f55;border-radius:6px;padding:.3rem .5rem;cursor:pointer">🗑️</button>`;
     cont.appendChild(row);
   });
@@ -2043,22 +2054,52 @@ async function borrarResultado(mid){
 
 async function guardarResultado(mid){
   if(!isAdminOrManager()){toast('Sin permiso','err');return}
+  const m   = allMatches.find(x=>x.id===mid);
+  const esKO = m && m.phase === 'ko';
   const a = document.getElementById('adA-'+mid).value;
   const b = document.getElementById('adB-'+mid).value;
   const f = document.getElementById('adF-'+mid).value;
-  if(a===''||b===''){toast('Marcador incompleto','err');return}
-  const {error} = await sb.from('matches').update({
-    score_a:parseInt(a), score_b:parseInt(b),
-    first_scorer:f||null
-  }).eq('id',mid);
-  if(error){toast('Error: '+error.message,'err');return}
-  // Update in-memory
-  const idx = allMatches.findIndex(m=>m.id===mid);
-  if(idx>=0){
-    allMatches[idx].result={scoreA:parseInt(a),scoreB:parseInt(b),firstScorer:f||null};
-    allMatches[idx].score_a=parseInt(a);allMatches[idx].score_b=parseInt(b);allMatches[idx].first_scorer=f||null;
+
+  // En partidos KO también permitimos guardar SOLO los equipos (sin marcador)
+  // para poder llenar los cruces conforme se definan los avanzados.
+  const updates = {};
+  if(esKO){
+    const ta = document.getElementById('adTA-'+mid).value.trim();
+    const tb = document.getElementById('adTB-'+mid).value.trim();
+    if(ta) updates.team_a = ta;
+    if(tb) updates.team_b = tb;
   }
-  toast('✅ Resultado guardado');
+
+  // Si pusiste marcador, valídalo y agrégalo al update
+  const hayMarcador = a!=='' || b!=='';
+  if(hayMarcador){
+    if(a===''||b===''){toast('Marcador incompleto','err');return}
+    updates.score_a = parseInt(a);
+    updates.score_b = parseInt(b);
+    updates.first_scorer = f || null;
+  }
+
+  if(Object.keys(updates).length === 0){
+    toast('Nada que guardar','err');
+    return;
+  }
+
+  const {error} = await sb.from('matches').update(updates).eq('id',mid);
+  if(error){toast('Error: '+error.message,'err');return}
+
+  // Update in-memory
+  const idx = allMatches.findIndex(x=>x.id===mid);
+  if(idx>=0){
+    if(updates.team_a !== undefined) allMatches[idx].teamA = updates.team_a;
+    if(updates.team_b !== undefined) allMatches[idx].teamB = updates.team_b;
+    if(hayMarcador){
+      allMatches[idx].result = {scoreA:parseInt(a),scoreB:parseInt(b),firstScorer:f||null};
+      allMatches[idx].score_a=parseInt(a);
+      allMatches[idx].score_b=parseInt(b);
+      allMatches[idx].first_scorer=f||null;
+    }
+  }
+  toast('✅ Guardado');
   renderGrupos(); renderBracket();
   if(sbProfile) renderQuiniela();
   await renderRanking();
