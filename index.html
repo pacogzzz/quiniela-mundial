@@ -1891,6 +1891,15 @@ async function renderAdmin(){
       ? `<input type="text" id="adTB-${m.id}" value="${m.teamB||''}" placeholder="Equipo B" style="font-size:.75rem;width:100%"/>`
       : `<div style="font-size:.75rem">${tB}</div>`;
 
+    // Selector de ganador (solo en KO) para resolver empates por penales / tiempo extra.
+    const winnerSel = esKO
+      ? `<select id="adW-${m.id}" title="Ganador (si quedó empatado)" style="font-size:.75rem;grid-column:1/-1;padding:.3rem">
+           <option value="">Ganador (solo si empate)</option>
+           <option value="A" ${m.winner==='A'?'selected':''}>🏆 Ganó ${TEAMS[m.teamA]?TEAMS[m.teamA].name:m.teamA||'A'} (penales/TE)</option>
+           <option value="B" ${m.winner==='B'?'selected':''}>🏆 Ganó ${TEAMS[m.teamB]?TEAMS[m.teamB].name:m.teamB||'B'} (penales/TE)</option>
+         </select>`
+      : '';
+
     row.innerHTML=`
       ${teamACell}
       <input type="number" min="0" value="${r.scoreA??''}" id="adA-${m.id}" placeholder="-"/>
@@ -1904,7 +1913,8 @@ async function renderAdmin(){
         <option value="none" ${r.firstScorer==='none'?'selected':''}>Sin goles</option>
       </select>
       <button class="btn-ok" onclick="guardarResultado('${m.id}')" title="Guardar marcador">💾</button>
-      <button onclick="borrarResultado('${m.id}')" title="Borrar marcador" style="background:#222;color:#f55;border:1px solid #f55;border-radius:6px;padding:.3rem .5rem;cursor:pointer">🗑️</button>`;
+      <button onclick="borrarResultado('${m.id}')" title="Borrar marcador" style="background:#222;color:#f55;border:1px solid #f55;border-radius:6px;padding:.3rem .5rem;cursor:pointer">🗑️</button>
+      ${winnerSel}`;
     cont.appendChild(row);
   });
   await renderCodigos();
@@ -2079,6 +2089,22 @@ async function guardarResultado(mid){
     updates.first_scorer = f || null;
   }
 
+  // En partidos KO: si hubo empate, registrar ganador por penales/TE
+  if(esKO){
+    const winnerEl = document.getElementById('adW-'+mid);
+    const w = winnerEl ? winnerEl.value : '';
+    if(hayMarcador && parseInt(a) === parseInt(b)){
+      if(!w){
+        toast('Empate en KO: selecciona quién ganó (penales/TE)','err');
+        return;
+      }
+      updates.winner = w;
+    } else {
+      // No empate o sin marcador → winner = null (se decide por score)
+      updates.winner = null;
+    }
+  }
+
   if(Object.keys(updates).length === 0){
     toast('Nada que guardar','err');
     return;
@@ -2098,6 +2124,7 @@ async function guardarResultado(mid){
       allMatches[idx].score_b=parseInt(b);
       allMatches[idx].first_scorer=f||null;
     }
+    if('winner' in updates) allMatches[idx].winner = updates.winner;
   }
   toast('✅ Guardado');
   renderGrupos(); renderBracket();
