@@ -1081,7 +1081,8 @@ function mapMatch(r){
       ? {scoreA:r.score_a, scoreB:r.score_b, firstScorer:r.first_scorer}
       : null,
     // keep raw cols for admin inputs
-    score_a:r.score_a, score_b:r.score_b, first_scorer:r.first_scorer
+    score_a:r.score_a, score_b:r.score_b, first_scorer:r.first_scorer,
+    winner: r.winner || null
   };
 }
 
@@ -1901,12 +1902,17 @@ async function renderAdmin(){
       : `<div style="font-size:.75rem">${tB}</div>`;
 
     // Selector de ganador (solo en KO) para resolver empates por penales / tiempo extra.
+    const tnA = (m.teamA||'A').replace(/<[^>]+>/g,'').trim();
+    const tnB = (m.teamB||'B').replace(/<[^>]+>/g,'').trim();
     const winnerSel = esKO
-      ? `<select id="adW-${m.id}" title="Ganador (si quedó empatado)" style="font-size:.75rem;grid-column:1/-1;padding:.3rem">
-           <option value="">Ganador (solo si empate)</option>
-           <option value="A" ${m.winner==='A'?'selected':''}>🏆 Ganó ${TEAMS[m.teamA]?TEAMS[m.teamA].name:m.teamA||'A'} (penales/TE)</option>
-           <option value="B" ${m.winner==='B'?'selected':''}>🏆 Ganó ${TEAMS[m.teamB]?TEAMS[m.teamB].name:m.teamB||'B'} (penales/TE)</option>
-         </select>`
+      ? `<div style="grid-column:1/-1;margin-top:.4rem;padding:.4rem;background:rgba(255,215,0,.08);border:1px dashed var(--dorado);border-radius:6px;display:flex;align-items:center;gap:.5rem">
+           <span style="font-size:.75rem;color:var(--dorado);font-weight:700">🏆 Ganador (si empate):</span>
+           <select id="adW-${m.id}" style="flex:1;font-size:.8rem;padding:.35rem;background:#000;color:#fff;border:1px solid var(--dorado);border-radius:4px">
+             <option value="">— (sin empate)</option>
+             <option value="A" ${m.winner==='A'?'selected':''}>${tnA}</option>
+             <option value="B" ${m.winner==='B'?'selected':''}>${tnB}</option>
+           </select>
+         </div>`
       : '';
 
     row.innerHTML=`
