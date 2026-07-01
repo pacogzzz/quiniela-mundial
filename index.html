@@ -1646,17 +1646,26 @@ function renderQuinielaMatch(m, pred, detalle){
 
   const tA = m.teamA==='TBD'?'TBD':(TEAMS[m.teamA]?TEAMS[m.teamA].flag+' '+TEAMS[m.teamA].name:m.teamA);
   const tB = m.teamB==='TBD'?'TBD':(TEAMS[m.teamB]?TEAMS[m.teamB].flag+' '+TEAMS[m.teamB].name:m.teamB);
-  const nameA = TEAMS[m.teamA]?TEAMS[m.teamA].name:'Equipo A';
-  const nameB = TEAMS[m.teamB]?TEAMS[m.teamB].name:'Equipo B';
+  // Nombre real del equipo: si está en TEAMS usa ese, si no usa el nombre guardado en DB (que ya trae bandera).
+  const nameA = TEAMS[m.teamA]?TEAMS[m.teamA].name:(m.teamA && m.teamA!=='TBD'?m.teamA:'Equipo A');
+  const nameB = TEAMS[m.teamB]?TEAMS[m.teamB].name:(m.teamB && m.teamB!=='TBD'?m.teamB:'Equipo B');
 
   const statusLabel = {up:'⏳ POR JUGAR',live:'🔴 EN CURSO',done:'✅ FINALIZADO'}[status];
   const statusClass = {up:'up',live:'live',done:'done'}[status];
 
   let resultHTML = '';
   if(m.result){
+    // Si es KO y hubo empate con ganador por penales/tiempo extra → mostrar el ganador
+    let ganadorTxt = '';
+    if(m.phase==='ko' && m.result.scoreA === m.result.scoreB && m.winner){
+      const nombreGanador = m.winner==='A' ? nameA : nameB;
+      ganadorTxt = `<div style="text-align:center;margin:.2rem 0 .6rem;color:#0f0;font-weight:800;font-size:.9rem">
+        🏆 Ganó ${nombreGanador} (por penales/tiempo extra)
+      </div>`;
+    }
     resultHTML = `<div style="text-align:center;margin:.4rem 0;color:var(--dorado);font-weight:900">
       RESULTADO REAL: ${m.result.scoreA} - ${m.result.scoreB}
-    </div>`;
+    </div>${ganadorTxt}`;
   }
 
   let canForm = m.teamA!=='TBD' && m.teamB!=='TBD';
