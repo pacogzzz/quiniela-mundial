@@ -1659,7 +1659,7 @@ function renderQuiniela(){
     <div style="font-size:.8rem;opacity:.85;margin-top:.3rem;line-height:1.6">
       🎯 Predicciones: <b style="color:var(--dorado)">${pts.preds}</b> ·
       🏠 Visitas/Consumos: <b style="color:var(--dorado)">${pts.visitas}</b>
-      ${pts.goleador>0?`<br>🥅 Bono Goleador: <b style="color:var(--dorado)">${pts.goleador}</b>`:''}
+      <br>🥅 Bono Goleador: <b style="color:var(--dorado)">${pts.goleador}</b>
     </div>`;
   list.appendChild(summary);
 
@@ -1796,7 +1796,7 @@ async function guardarPrediccion(mid){
     <div style="font-size:.8rem;opacity:.85;margin-top:.3rem;line-height:1.6">
       🎯 Predicciones: <b style="color:var(--dorado)">${pts.preds}</b> ·
       🏠 Visitas/Consumos: <b style="color:var(--dorado)">${pts.visitas}</b>
-      ${pts.goleador>0?`<br>🥅 Bono Goleador: <b style="color:var(--dorado)">${pts.goleador}</b>`:''}
+      <br>🥅 Bono Goleador: <b style="color:var(--dorado)">${pts.goleador}</b>
     </div>`;
 }
 
@@ -1902,7 +1902,7 @@ async function renderRanking(){
       <div class="rank-pos">${medal}</div>
       <div>
         <div class="rank-name">${r.nombre}${isMe?' <span style="color:var(--dorado)">(tú)</span>':''}</div>
-        <div class="rank-breakdown">🎯 ${r.puntos_predicciones} pred · 🏠 ${r.puntos_visitas_consumos||0} La Corte${(r.puntos_goleador||0)>0?` · 🥅 ${r.puntos_goleador} Goleador`:''}</div>
+        <div class="rank-breakdown">🎯 ${r.puntos_predicciones} pred · 🏠 ${r.puntos_visitas_consumos||0} La Corte · 🥅 ${r.puntos_goleador||0} Goleador</div>
       </div>
       <div class="rank-points">${r.total_puntos}</div>`;
     list.appendChild(row);
