@@ -1133,6 +1133,19 @@ async function loadProfile(){
   if(sbProfile && (sbProfile.role==='admin'||sbProfile.role==='manager')){
     document.getElementById('tab-admin').style.display='';
   }
+  // Cargar desglose de puntos (visitas/consumos vs bono goleador) desde el ranking view
+  if(sbProfile){
+    const {data:r} = await sb.from('ranking')
+      .select('puntos_visitas_consumos,puntos_goleador')
+      .eq('id', sbUser.id).maybeSingle();
+    if(r){
+      sbProfile.puntos_visitas_consumos = r.puntos_visitas_consumos || 0;
+      sbProfile.puntos_goleador         = r.puntos_goleador         || 0;
+    } else {
+      sbProfile.puntos_visitas_consumos = sbProfile.puntos_codigos || 0;
+      sbProfile.puntos_goleador         = 0;
+    }
+  }
 }
 
 /* =====================================================
@@ -1627,8 +1640,10 @@ function calcularMisPuntos(){
     if(pts>0) detalle[m.id]=pts;
     preds+=pts;
   });
-  const codigos = sbProfile?.puntos_codigos||0;
-  return {total:preds+codigos, preds, codigos, detalle};
+  const codigos   = sbProfile?.puntos_codigos           || 0;
+  const goleador  = sbProfile?.puntos_goleador          || 0;
+  const visitas   = sbProfile?.puntos_visitas_consumos  || (codigos - goleador);
+  return {total:preds+codigos, preds, codigos, visitas, goleador, detalle};
 }
 
 function renderQuiniela(){
@@ -1641,9 +1656,10 @@ function renderQuiniela(){
   summary.className='points-table';
   summary.innerHTML=`
     <h3>💰 MIS PUNTOS: ${pts.total}</h3>
-    <div style="font-size:.8rem;opacity:.85;margin-top:.3rem">
+    <div style="font-size:.8rem;opacity:.85;margin-top:.3rem;line-height:1.6">
       🎯 Predicciones: <b style="color:var(--dorado)">${pts.preds}</b> ·
-      🏠 Visitas/Consumos: <b style="color:var(--dorado)">${pts.codigos}</b>
+      🏠 Visitas/Consumos: <b style="color:var(--dorado)">${pts.visitas}</b>
+      ${pts.goleador>0?`<br>🥅 Bono Goleador: <b style="color:var(--dorado)">${pts.goleador}</b>`:''}
     </div>`;
   list.appendChild(summary);
 
@@ -1777,9 +1793,10 @@ async function guardarPrediccion(mid){
   const summary = document.querySelector('#quiniela-list .points-table');
   if(summary) summary.innerHTML=`
     <h3>💰 MIS PUNTOS: ${pts.total}</h3>
-    <div style="font-size:.8rem;opacity:.85;margin-top:.3rem">
+    <div style="font-size:.8rem;opacity:.85;margin-top:.3rem;line-height:1.6">
       🎯 Predicciones: <b style="color:var(--dorado)">${pts.preds}</b> ·
-      🏠 Visitas/Consumos: <b style="color:var(--dorado)">${pts.codigos}</b>
+      🏠 Visitas/Consumos: <b style="color:var(--dorado)">${pts.visitas}</b>
+      ${pts.goleador>0?`<br>🥅 Bono Goleador: <b style="color:var(--dorado)">${pts.goleador}</b>`:''}
     </div>`;
 }
 
@@ -1885,7 +1902,7 @@ async function renderRanking(){
       <div class="rank-pos">${medal}</div>
       <div>
         <div class="rank-name">${r.nombre}${isMe?' <span style="color:var(--dorado)">(tú)</span>':''}</div>
-        <div class="rank-breakdown">🎯 ${r.puntos_predicciones} pred · 🏠 ${r.puntos_codigos} La Corte</div>
+        <div class="rank-breakdown">🎯 ${r.puntos_predicciones} pred · 🏠 ${r.puntos_visitas_consumos||0} La Corte${(r.puntos_goleador||0)>0?` · 🥅 ${r.puntos_goleador} Goleador`:''}</div>
       </div>
       <div class="rank-points">${r.total_puntos}</div>`;
     list.appendChild(row);
