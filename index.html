@@ -837,7 +837,8 @@ td.pts{color:var(--dorado);font-weight:900}
           </p>
           <button onclick="exportarFoliosCSV()" style="background:#111;color:var(--dorado);border:1px solid var(--dorado);padding:.4rem .8rem;border-radius:6px">📥 EXPORTAR CSV</button>
         </div>
-        <div id="codes-list" style="font-size:.8rem;max-height:260px;overflow-y:auto"></div>
+        <input type="text" id="codes-filter" placeholder="🔎 Buscar código o fecha (ej: 0907, GOL, visita)" style="width:100%;padding:.4rem;margin-bottom:.4rem;background:#000;color:#fff;border:1px solid #444;border-radius:4px" oninput="filtrarCodigos(this.value)"/>
+        <div id="codes-list" style="font-size:.8rem;max-height:600px;overflow-y:auto;border:1px solid #333;border-radius:4px;padding:.3rem"></div>
       </div>
       <div class="admin-section">
         <h3>👥 USUARIOS REGISTRADOS</h3>
@@ -2192,20 +2193,60 @@ async function guardarResultado(mid){
   await renderRanking();
 }
 
+let _allCodigos = [];
+
 async function renderCodigos(){
+  const {data} = await sb.from('codigos')
+    .select('code,tipo,fecha_valida,puntos')
+    .order('fecha_valida')
+    .order('code');
+  _allCodigos = data || [];
+  pintarCodigos(_allCodigos);
+}
+
+function pintarCodigos(rows){
   const list = document.getElementById('codes-list');
-  const {data} = await sb.from('codigos').select('code,tipo,fecha_valida').order('fecha_valida');
   const today = new Date().toISOString().slice(0,10);
-  list.innerHTML=(data||[]).map(c=>{
+  const total = rows.length;
+  const nGol = rows.filter(c=>c.tipo==='goleador').length;
+  const nVis = rows.filter(c=>c.tipo==='visita').length;
+  const nCon = rows.filter(c=>c.tipo==='consumo').length;
+
+  const summary = `
+    <div style="padding:.3rem;background:rgba(255,215,0,.08);border-radius:4px;margin-bottom:.4rem;font-size:.75rem">
+      Total: <b style="color:var(--dorado)">${total}</b> ·
+      🥅 Goleador: <b>${nGol}</b> ·
+      🏠 Visita: <b>${nVis}</b> ·
+      🍔 Consumo: <b>${nCon}</b>
+    </div>`;
+
+  const items = rows.map(c=>{
     const isToday = c.fecha_valida===today;
     const fecha = c.fecha_valida ? new Date(c.fecha_valida+'T12:00').toLocaleDateString('es-MX',{day:'2-digit',month:'short'}) : '';
+    const puntosTxt = c.tipo==='goleador' && c.puntos ? ` <span style="color:var(--dorado)">+${c.puntos}pts</span>` : '';
+    const tipoIcon = c.tipo==='goleador'?'🥅':(c.tipo==='consumo'?'🍔':'🏠');
     return `
-    <div style="padding:.2rem .4rem;border-bottom:1px dashed #333">
-      <b style="color:${isToday?'var(--dorado)':'#888'}">${c.code}</b>
-      <span style="opacity:.7">· ${c.tipo} · ${fecha}${isToday?' <span style="color:var(--dorado)">· HOY</span>':''}</span>
-      ${sbProfile?.role==='admin'?`<button onclick="borrarCodigo('${c.code}')" style="float:right;color:#f55">✕</button>`:''}
+    <div style="padding:.25rem .4rem;border-bottom:1px dashed #333;display:flex;align-items:center;gap:.4rem">
+      <span>${tipoIcon}</span>
+      <b style="color:${isToday?'var(--dorado)':'#ccc'};min-width:130px">${c.code}</b>
+      <span style="opacity:.7;flex:1">${c.tipo} · ${fecha}${isToday?' <span style="color:var(--dorado);font-weight:700">· HOY</span>':''}${puntosTxt}</span>
+      ${sbProfile?.role==='admin'?`<button onclick="borrarCodigo('${c.code}')" style="color:#f55;background:none;border:1px solid #f55;border-radius:4px;padding:.1rem .4rem;cursor:pointer;font-size:.7rem">✕</button>`:''}
     </div>`;
   }).join('');
+
+  list.innerHTML = summary + (items || '<p style="text-align:center;opacity:.5;padding:1rem">Sin códigos que mostrar</p>');
+}
+
+function filtrarCodigos(q){
+  q = (q||'').trim().toUpperCase();
+  if(!q){ pintarCodigos(_allCodigos); return; }
+  const filtered = _allCodigos.filter(c=>{
+    return c.code.toUpperCase().includes(q)
+        || c.tipo.toUpperCase().includes(q)
+        || (c.fecha_valida||'').includes(q)
+        || (c.fecha_valida||'').replace(/-/g,'').includes(q);
+  });
+  pintarCodigos(filtered);
 }
 
 async function crearCodigo(){
